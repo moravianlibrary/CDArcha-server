@@ -1,0 +1,26 @@
+<update>
+	<latest-version>
+		<!-- Admin version -->
+		<version type="Admin">
+			<major>0</major>
+			<minor>1</minor>
+			<date>01/20/2018</date>
+			<checksum>0e06210d4672d6e73836c9de838c398ee9e5687af65bb41591f147e3ff11c550</checksum>
+			<download>https://obalkyknih.cz/obalkyknih-scanner/obalkyknih-scanner_setup.exe</download>
+		</version>
+		<!-- NoAdmin version -->
+		<version type="User">
+			<major>0</major>
+			<minor>1</minor>
+			<date>01/20/2018</date>
+			<checksum>138359b00884f02c8ec4c1fd27b480e2b473593edb33610a6f132ee093d4a5f5</checksum>
+			<download>https://obalkyknih.cz/obalkyknih-scanner/obalkyknih-scanner_setupNoAdmin.exe</download>
+		</version>
+	</latest-version>
+	<unsupported-versions>
+		<version>
+			<major>0</major>
+			<minor>0</minor>
+		</version>
+	</unsupported-versions>
+</update>
