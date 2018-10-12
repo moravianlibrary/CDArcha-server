@@ -1,4 +1,4 @@
-var urlmongo = "mongodb://localhost:27017"
+var urlmongo = "mongodb://localhost:27017/cdarcha_db"
 var metaCollection = "media"
 
 // =========================================
@@ -6,10 +6,8 @@ var metaCollection = "media"
 var mongo = require('mongodb');
 var client = mongo.MongoClient;
 
-client.connect(urlmongo, function (err, client) {
+client.connect(urlmongo, function (err, db) {
   if (err) {  return console.dir(err); }
-  var db = client.db('cdarcha_db');
-  console.log('connected...');
 
   db.collection(metaCollection).ensureIndex({ean13:1}, {w:1}, function(err, result) {
     if (err) {  return console.dir(err); }
@@ -24,7 +22,7 @@ client.connect(urlmongo, function (err, client) {
           if (err) {  return console.dir(err); }
 
           console.log('ok');
-          client.close();
+          db.close();
         });
       });
     });

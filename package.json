@@ -1,0 +1,39 @@
+{
+  "name": "cdarcha_server",
+  "version": "1.18.10",
+  "description": "Archivacni server CDArcha",
+  "main": "app.js",
+  "directories": {
+    "doc": "doc"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/moravianlibrary/CDArcha-server.git"
+  },
+  "author": "MZK",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/moravianlibrary/CDArcha-server/issues"
+  },
+  "homepage": "https://github.com/moravianlibrary/CDArcha-server#readme",
+  "dependencies": {
+    "@types/node": "^10.11.4",
+    "MD5": "^1.3.0",
+    "bcrypt-nodejs": "0.0.3",
+    "child_process": "^1.0.2",
+    "crypto": "^1.0.1",
+    "fs": "0.0.1-security",
+    "http": "0.0.0",
+    "http-proxy": "^1.17.0",
+    "https": "^1.0.0",
+    "md5-file": "^4.0.0",
+    "mongodb": "^3.1.6",
+    "parse-multipart": "^1.0.4",
+    "request": "^2.88.0",
+    "typescript": "^3.1.1",
+    "url": "^0.11.0"
+  }
+}
