@@ -8,7 +8,8 @@ const mediaCollection = 'media';
 const userCollection = 'users';
 const filesCollection = 'files';
 const logCollection = 'logcron';
-const storageFolder = "/mnt/cdarcha";
+const storageFolder = '/mnt/cdarcha';
+const abbyyDir = '/home/cdarcha/abby/';
 
 // =========================================
 
@@ -23,8 +24,8 @@ const getFolderSize = require('get-folder-size');
 var lockFile = require('lockfile');
 
 
-function _log(db, msg) {
-  db.collection(logCollection).insertOne({ 'dtCreated': Date.now(), 'msg': msg });
+function _log(db, archiveId, msg) {
+  db.collection(logCollection).insertOne({ 'dtCreated': Date.now(), 'archive': mongo.ObjectId(archiveId), 'msg': msg });
   console.log(msg);
 }
 
@@ -44,16 +45,17 @@ client.connect(urlmongo, { useNewUrlParser: true }, function (err, client) {
     try {
 
       var processedArchives = 0;
-      const cursorArchives = db.collection(archiveCollection).find({ status: 1 });
+      const cursorArchives = db.collection(archiveCollection).find({ _id: mongo.ObjectId('5e0a006734791a079424db9e') });
+//      const cursorArchives = db.collection(archiveCollection).find({ status: 1 });
       while(await cursorArchives.hasNext()) {
         const archive = await cursorArchives.next();
-
-        _log(db, '[ ZACINA ZPRACOVANI ARCHIVU: ' + archive.uuid + ' ]');
 
         var archiveId = archive._id;
         var archiveUuid = archive.uuid;
         var archiveDir = storageFolder + '/' + archiveUuid;
         var archiveDataDir = archiveDir + '/data/';
+
+        _log(db, archiveId, '[ ZACINA ZPRACOVANI ARCHIVU: ' + archive.uuid + ' ]');
 
         await db.collection(archiveCollection).updateOne({ _id: mongo.ObjectId(archiveId) }, { $set: { status: 2 } });
 
@@ -162,13 +164,13 @@ client.connect(urlmongo, { useNewUrlParser: true }, function (err, client) {
           coverNo = 1;
           coverSeq = '0001';
           fileType = cover.fileName.split('.');
-          _log(db, '[ Nalezena reprezentativni obalka archivu - scan cislo: ' + coverSeq + ' ]');
+          _log(db, archiveId, '[ Nalezena reprezentativni obalka archivu - scan cislo: ' + coverSeq + ' ]');
 
           if (fileType[1] != 'jp2') {
             // transformace na jp2
             tmpFileName = archiveId + '-cover.jp2';
             newFileName = 'mcs_' + archiveUuid + '_' + coverSeq + '.jp2';
-            _log(db, '[ Transformace na JP2: ' + newFileName + ' ]');
+            _log(db, archiveId, '[ Transformace na JP2: ' + newFileName + ' ]');
             execCode = execSync('bin/convertTIFtoJP2.pl ' + archiveDataDir+'mastercopyscan/'+cover.fileName + ' ' + archiveDataDir+'mastercopyscan/'+archiveId+'-cover.jp2');
             fs.unlinkSync(archiveDataDir + 'mastercopyscan/' + cover.fileName);
           }
@@ -196,7 +198,7 @@ client.connect(urlmongo, { useNewUrlParser: true }, function (err, client) {
           // COVER USER COPY 1:8
           //
           usercopyFileName = 'ucs_' + archiveUuid + '_' + coverSeq;
-          _log(db, '[ Transformace na JP2: ' + usercopyFileName + '.jp2 ]');
+          _log(db, archiveId, '[ Transformace na JP2: ' + usercopyFileName + '.jp2 ]');
           execCode = execSync('kdu_transcode -i ' + archiveDataDir+'mastercopyscan/'+tmpFileName + ' -o ' + archiveDataDir+'usercopyscan/'+usercopyFileName+'.j2c Corder=RPCL "Cprecincts={256,256},{256,256},{128,128}" ORGtparts=R -rate 3 Clayers=12 "Cmodes={BYPASS}"');
           fs.renameSync(archiveDataDir+'usercopyscan/'+usercopyFileName+'.j2c', archiveDataDir+'usercopyscan/'+usercopyFileName+'.jp2');
           // doplnit booklet usercopy 1:8 do seznamu md5 a main_mets itemlistu
@@ -210,7 +212,7 @@ client.connect(urlmongo, { useNewUrlParser: true }, function (err, client) {
           meta = await db.collection(filesCollection).findOne({ "parent": cover._id });
           tmpFileName = 'amd_mets_' + meta._id + '.xml';
           newFileName = 'amd_mets_' + archiveUuid + '_' + coverSeq + '.xml';
-          _log(db, '[ Mets rezprezentativni obalky: ' + newFileName + ' ]');
+          _log(db, archiveId, '[ Mets rezprezentativni obalky: ' + newFileName + ' ]');
           if (fs.existsSync(archiveDataDir + 'amdsec/' + meta.fileName)) {
             dataAmdMetsIsoimg = fs.readFileSync(archiveDataDir + 'amdsec/' + meta.fileName);
             dataAmdMetsIsoimg = dataAmdMetsIsoimg.toString();
@@ -240,13 +242,13 @@ client.connect(urlmongo, { useNewUrlParser: true }, function (err, client) {
           var bookletSeq = '000' + (coverNo+1);
           bookletSeq = bookletSeq.substring(bookletSeq.length-4);
           fileType = booklet.fileName.split('.');
-          _log(db, '[ Nalezen reprezentativni booklet archivu - scan cislo: ' + coverSeq + ' ]');
+          _log(db, archiveId, '[ Nalezen reprezentativni booklet archivu - scan cislo: ' + coverSeq + ' ]');
 
           if (fileType[1] != 'jp2') {
             // transformace na jp2
             tmpFileName = booklet._id + '-booklet.jp2';
             newFileName = 'mcs_' + archiveUuid + '_' + bookletSeq + '.jp2';
-            _log(db, '[ Transformace na JP2: ' + newFileName + ' ]');
+            _log(db, archiveId, '[ Transformace na JP2: ' + newFileName + ' ]');
             execCode = execSync('bin/convertTIFtoJP2.pl ' + archiveDataDir+'mastercopyscan/'+booklet.fileName + ' ' + archiveDataDir+'mastercopyscan/'+booklet._id+'-booklet.jp2');
             fs.unlinkSync(archiveDataDir + 'mastercopyscan/' + booklet.fileName);
           }
@@ -271,10 +273,38 @@ client.connect(urlmongo, { useNewUrlParser: true }, function (err, client) {
           itemcount++;
 
           //
+          // BOOKLET OCR
+          //
+          ocrTextFileName = 'mcs_' + archiveUuid + '_' + bookletSeq + '.txt';
+          ocrAltoFileName = 'mcs_' + archiveUuid + '_' + bookletSeq + '.xml';
+          _log(db, archiveId, '[ OCR bookletu pomoci Abbyy Recognition Server: ' + archiveDataDir+'mastercopyscan/'+tmpFileName + ' ]');
+          var ocrTextFileFullPath = archiveDataDir + 'mastercopyscan/' + ocrTextFileName;
+          if (fs.existsSync(ocrTextFileFullPath)) {
+            fs.unlinkSync(ocrTextFileFullPath);
+          }
+          var ocrAltoFileFullPath = archiveDataDir + 'mastercopyscan/' + ocrAltoFileName;
+          if (fs.existsSync(ocrAltoFileFullPath)) {
+            fs.unlinkSync(ocrAltoFileFullPath);
+          }
+          execCode = execSync(abbyyDir + 'jre1.6.0_45/bin/java -jar ' + abbyyDir + 'ocr-abbyy.jar ' + archiveDataDir+'mastercopyscan/'+tmpFileName + ' ' + archiveDataDir+'mastercopyscan/'+ocrTextFileName + ' ' + archiveDataDir+'mastercopyscan/'+ocrAltoFileName);
+          // doplnit OCR TXT do seznamu md5 a main_mets itemlistu
+          ocrChecksum = md5.sync(archiveDataDir + 'mastercopyscan/' + ocrTextFileName);
+          md5File += ocrChecksum + ' \\mastercopyscan\\' + ocrTextFileName + "\n";
+          manifestMd5File += ocrChecksum + ' data/mastercopyscan/' + ocrTextFileName + "\n";
+          itemlist += '        <item>\\mastercopyscan\\' + ocrTextFileName + '</item>' + "\n";
+          itemcount++;
+          // doplnit OCR ALTO do seznamu md5 a main_mets itemlistu
+          ocrChecksum = md5.sync(archiveDataDir + 'mastercopyscan/' + ocrAltoFileName);
+          md5File += ocrChecksum + ' \\mastercopyscan\\' + ocrAltoFileName + "\n";
+          manifestMd5File += ocrChecksum + ' data/mastercopyscan/' + ocrAltoFileName + "\n";
+          itemlist += '        <item>\\mastercopyscan\\' + ocrAltoFileName + '</item>' + "\n";
+          itemcount++;
+
+          //
           // BOOKLET USER COPY 1:8
           //
           usercopyFileName = 'ucs_' + archiveUuid + '_' + coverSeq;
-          _log(db, '[ Transformace na JP2: ' + userCopyFileName + '.jp2 ]');
+          _log(db, archiveId, '[ Transformace na JP2: ' + userCopyFileName + '.jp2 ]');
           execCode = execSync('kdu_transcode -i ' + archiveDataDir+'mastercopyscan/'+tmpFileName + ' -o ' + archiveDataDir+'usercopyscan/'+usercopyFileName+'.j2c Corder=RPCL "Cprecincts={256,256},{256,256},{128,128}" ORGtparts=R -rate 3 Clayers=12 "Cmodes={BYPASS}"');
           fs.renameSync(archiveDataDir+'usercopyscan/'+usercopyFileName+'.j2c', archiveDataDir+'usercopyscan/'+usercopyFileName+'.jp2');
           // doplnit booklet usercopy 1:8 do seznamu md5 a main_mets itemlistu
@@ -288,7 +318,7 @@ client.connect(urlmongo, { useNewUrlParser: true }, function (err, client) {
           meta = await db.collection(filesCollection).findOne({ "parent": booklet._id });
           tmpFileName = 'amd_mets_' + meta._id + '.xml';
           newFileName = 'amd_mets_' + archiveUuid + '_' + bookletSeq + '.xml';
-          _log(db, '[ Mets reprezentativniho bookletu: ' + newFileName + ' ]');
+          _log(db, archiveId, '[ Mets reprezentativniho bookletu: ' + newFileName + ' ]');
           if (fs.existsSync(archiveDataDir + 'amdsec/' + meta.fileName)) {
             dataAmdMetsIsoimg = fs.readFileSync(archiveDataDir + 'amdsec/' + meta.fileName);
             dataAmdMetsIsoimg = dataAmdMetsIsoimg.toString();
@@ -321,7 +351,7 @@ client.connect(urlmongo, { useNewUrlParser: true }, function (err, client) {
           mediumSeq = mediumSeq.substring(mediumSeq.length-4);
           tmpFileName = media._id + '.' + media.fileType;
           newFileName = archiveUuid + '_' + mediumSeq + '.' + media.fileType;
-          _log(db, '[ ZPRACOVANI MEDIA "' + media.mediaNo + '" : ' + newFileName + ']');
+          _log(db, archiveId, '[ ZPRACOVANI MEDIA "' + media.mediaNo + '" : ' + newFileName + ']');
 
           // toto je docasny nazov suboru - na pozadovany nazev bude prejmenovan az po prejmenovani vsech medii na docasny nazev
           // kvuli tomu, ze se muze sekvencni cislo skrizit
@@ -339,7 +369,7 @@ client.connect(urlmongo, { useNewUrlParser: true }, function (err, client) {
           meta = await db.collection(filesCollection).findOne({ "media": mongo.ObjectId(media._id), "fileType": "amdsec-media-meta" });
           tmpFileName = 'amd_mets_isoimg_' + meta._id + '.xml';
           newFileName = 'amd_mets_isoimg_' + archiveUuid + '_' + mediumSeq + '.xml';
-          _log(db, '[ ZPRACOVANI METS MEDIA: ' + newFileName + ' ]');
+          _log(db, archiveId, '[ ZPRACOVANI METS MEDIA: ' + newFileName + ' ]');
           if (fs.existsSync(archiveDataDir + 'amdsec/' + meta.fileName)) {
             dataAmdMetsIsoimg = fs.readFileSync(archiveDataDir + 'amdsec/' + meta.fileName);
             dataAmdMetsIsoimg = dataAmdMetsIsoimg.toString();
@@ -406,13 +436,13 @@ client.connect(urlmongo, { useNewUrlParser: true }, function (err, client) {
             coverSeq = '000' + coverNo;
             coverSeq = coverSeq.substring(coverSeq.length-4);
             fileType = cover.fileName.split('.');
-            _log(db, '[ Nalezena obalka media - scan cislo: ' + coverSeq + ' ]');
+            _log(db, archiveId, '[ Nalezena obalka media - scan cislo: ' + coverSeq + ' ]');
 
             if (fileType[1] != 'jp2') {
               // transformace na jp2
               tmpFileName = cover._id + '-cover.jp2';
               newFileName = 'mcs_' + archiveUuid + '_' + coverSeq + '.jp2';
-              _log(db, '[ Transformace na JP2: ' + newFileName + ' ]');
+              _log(db, archiveId, '[ Transformace na JP2: ' + newFileName + ' ]');
               execCode = execSync('bin/convertTIFtoJP2.pl ' + archiveDataDir+'mastercopyscan/'+cover.fileName + ' ' + archiveDataDir+'mastercopyscan/'+cover._id+'-cover.jp2');
               fs.unlinkSync(archiveDataDir + 'mastercopyscan/' + cover.fileName);
             }
@@ -446,7 +476,7 @@ client.connect(urlmongo, { useNewUrlParser: true }, function (err, client) {
             // COVER USER COPY 1:8
             //
             usercopyFileName = 'ucs_' + archiveUuid + '_' + coverSeq;
-            _log(db, '[ Transformace na JP2: ' + usercopyFileName + '.jp2 ]');
+            _log(db, archiveId, '[ Transformace na JP2: ' + usercopyFileName + '.jp2 ]');
             execCode = execSync('kdu_transcode -i ' + archiveDataDir+'mastercopyscan/'+tmpFileName + ' -o ' + archiveDataDir+'usercopyscan/'+usercopyFileName+'.j2c Corder=RPCL "Cprecincts={256,256},{256,256},{128,128}" ORGtparts=R -rate 3 Clayers=12 "Cmodes={BYPASS}"');
             fs.renameSync(archiveDataDir+'usercopyscan/'+usercopyFileName+'.j2c', archiveDataDir+'usercopyscan/'+usercopyFileName+'.jp2');
             // doplnit booklet usercopy 1:8 do seznamu md5 a main_mets itemlistu
@@ -461,7 +491,7 @@ client.connect(urlmongo, { useNewUrlParser: true }, function (err, client) {
             if (meta) {
               tmpFileName = 'amd_mets_' + meta._id + '.xml';
               newFileName = 'amd_mets_' + archiveUuid + '_' + coverSeq + '.xml';
-              _log(db, '[ Mets obalky media: ' + newFileName + ' ]');
+              _log(db, archiveId, '[ Mets obalky media: ' + newFileName + ' ]');
               if (fs.existsSync(archiveDataDir + 'amdsec/' + meta.fileName)) {
                 dataAmdMetsIsoimg = fs.readFileSync(archiveDataDir + 'amdsec/' + meta.fileName);
                 dataAmdMetsIsoimg = dataAmdMetsIsoimg.toString();
@@ -494,13 +524,13 @@ client.connect(urlmongo, { useNewUrlParser: true }, function (err, client) {
             coverSeq = '000' + coverNo;
             coverSeq = coverSeq.substring(coverSeq.length-4);
             fileType = booklet.fileName.split('.');
-            _log(db, '[ Nalezen booklet media - scan cislo: ' + coverSeq + ' ]');
+            _log(db, archiveId, '[ Nalezen booklet media - scan cislo: ' + coverSeq + ' ]');
 
             if (fileType[1] != 'jp2') {
               // transformace na jp2
               tmpFileName = booklet._id + '-booklet.jp2';
               newFileName = 'mcs_' + archiveUuid + '_' + coverSeq + '.jp2';
-              _log(db, '[ Transformace na JP2: ' + newFileName + ' ]');
+              _log(db, archiveId, '[ Transformace na JP2: ' + newFileName + ' ]');
               execCode = execSync('bin/convertTIFtoJP2.pl ' + archiveDataDir+'mastercopyscan/'+booklet.fileName + ' ' + archiveDataDir+'mastercopyscan/'+booklet._id+'-booklet.jp2');
               fs.unlinkSync(archiveDataDir + 'mastercopyscan/' + booklet.fileName);
             }
@@ -525,10 +555,38 @@ client.connect(urlmongo, { useNewUrlParser: true }, function (err, client) {
             itemcount++;
 
             //
+            // BOOKLET OCR
+            //
+            ocrTextFileName = 'mcs_' + archiveUuid + '_' + coverSeq + '.txt';
+            ocrAltoFileName = 'mcs_' + archiveUuid + '_' + coverSeq + '.xml';
+            _log(db, archiveId, '[ OCR bookletu pomoci Abbyy Recognition Server: ' + archiveDataDir+'mastercopyscan/'+tmpFileName + ' ]');
+            var ocrTextFileFullPath = archiveDataDir + 'mastercopyscan/' + ocrTextFileName;
+            if (fs.existsSync(ocrTextFileFullPath)) {
+              fs.unlinkSync(ocrTextFileFullPath);
+            }
+            var ocrAltoFileFullPath = archiveDataDir + 'mastercopyscan/' + ocrAltoFileName;
+            if (fs.existsSync(ocrAltoFileFullPath)) {
+              fs.unlinkSync(ocrAltoFileFullPath);
+            }
+            execCode = execSync(abbyyDir + 'jre1.6.0_45/bin/java -jar ' + abbyyDir + 'ocr-abbyy.jar ' + archiveDataDir+'mastercopyscan/'+tmpFileName + ' ' + archiveDataDir+'mastercopyscan/'+ocrTextFileName + ' ' + archiveDataDir+'mastercopyscan/'+ocrAltoFileName);
+            // doplnit OCR TXT do seznamu md5 a main_mets itemlistu
+            ocrChecksum = md5.sync(archiveDataDir + 'mastercopyscan/' + ocrTextFileName);
+            md5File += ocrChecksum + ' \\mastercopyscan\\' + ocrTextFileName + "\n";
+            manifestMd5File += ocrChecksum + ' data/mastercopyscan/' + ocrTextFileName + "\n";
+            itemlist += '        <item>\\mastercopyscan\\' + ocrTextFileName + '</item>' + "\n";
+            itemcount++;
+            // doplnit OCR ALTO do seznamu md5 a main_mets itemlistu
+            ocrChecksum = md5.sync(archiveDataDir + 'mastercopyscan/' + ocrAltoFileName);
+            md5File += ocrChecksum + ' \\mastercopyscan\\' + ocrAltoFileName + "\n";
+            manifestMd5File += ocrChecksum + ' data/mastercopyscan/' + ocrAltoFileName + "\n";
+            itemlist += '        <item>\\mastercopyscan\\' + ocrAltoFileName + '</item>' + "\n";
+            itemcount++;
+
+            //
             // BOOKLET USER COPY 1:8
             //
             usercopyFileName = 'ucs_' + archiveUuid + '_' + coverSeq;
-            _log(db, '[ Transformace na JP2: ' + usercopyFileName + '.jp2 ]');
+            _log(db, archiveId, '[ Transformace na JP2: ' + usercopyFileName + '.jp2 ]');
             execCode = execSync('kdu_transcode -i ' + archiveDataDir+'mastercopyscan/'+tmpFileName + ' -o ' + archiveDataDir+'usercopyscan/'+usercopyFileName+'.j2c Corder=RPCL "Cprecincts={256,256},{256,256},{128,128}" ORGtparts=R -rate 3 Clayers=12 "Cmodes={BYPASS}"');
             fs.renameSync(archiveDataDir+'usercopyscan/'+usercopyFileName+'.j2c', archiveDataDir+'usercopyscan/'+usercopyFileName+'.jp2');
             // doplnit booklet usercopy 1:8 do seznamu md5 a main_mets itemlistu
@@ -543,7 +601,7 @@ client.connect(urlmongo, { useNewUrlParser: true }, function (err, client) {
             if (meta) {
               tmpFileName = 'amd_mets_' + meta._id + '.xml';
               newFileName = 'amd_mets_' + archiveUuid + '_' + coverSeq + '.xml';
-              _log(db, '[ Mets bookletu: ' + newFileName + ' ]');
+              _log(db, archiveId, '[ Mets bookletu: ' + newFileName + ' ]');
               if (fs.existsSync(archiveDataDir + 'amdsec/' + meta.fileName)) {
                 dataAmdMetsIsoimg = fs.readFileSync(archiveDataDir + 'amdsec/' + meta.fileName);
                 dataAmdMetsIsoimg = dataAmdMetsIsoimg.toString();
@@ -569,7 +627,7 @@ client.connect(urlmongo, { useNewUrlParser: true }, function (err, client) {
         // ===================================================
         //   DROID
         // ===================================================
-        _log(db, '[ Zacina analyza DROID vsech medii archivu ' + archiveUuid + ' ]');
+        _log(db, archiveId, '[ Zacina analyza DROID vsech medii archivu ' + archiveUuid + ' ]');
         try {
           execSync('./bin/droid-6.4/droid.sh -a ' + archiveDataDir+'isoimage -p ' + archiveDataDir+'droid.profile', { 'timeout': 1800000, 'killSignal': 'SIGKILL' });
           execSync('./bin/droid-6.4/droid.sh -p ' + archiveDataDir+'droid.profile -n "Comprehensive breakdown" -t xml -r ' + archiveDataDir+'droid_'+archiveUuid+'.xml', { 'timeout': 1800000, 'killSignal': 'SIGKILL' });
@@ -584,7 +642,7 @@ client.connect(urlmongo, { useNewUrlParser: true }, function (err, client) {
           manifestMd5File += droidChecksum + ' data/' + 'droid_' + archiveUuid + '.xml' + "\n";
           itemlist += '        <item>\\' + 'droid_' + archiveUuid + '.xml' + '</item>' + "\n";
           itemcount++;
-          _log(db, '[ Ukoncena analyza DROID vsech medii archivu: ' + archiveUuid + ' ]');
+          _log(db, archiveId, '[ Ukoncena analyza DROID vsech medii archivu: ' + archiveUuid + ' ]');
         }
         catch (err) {
           if (err.code == 'ETIMEDOUT') {
@@ -592,7 +650,7 @@ client.connect(urlmongo, { useNewUrlParser: true }, function (err, client) {
           } else {
             archiveFinalStatus = 6; // jiny problem s analyzou DROID
           }
-          _log(db, '[ DROID analyza neuspesna ]');
+          _log(db, archiveId, '[ DROID analyza neuspesna ]');
           // odmazeme existujici droid.profile
           if (fs.existsSync(archiveDataDir+'droid.profile')) {
             fs.unlinkSync(archiveDataDir+'droid.profile');
@@ -602,7 +660,7 @@ client.connect(urlmongo, { useNewUrlParser: true }, function (err, client) {
           continue;
         }
 
-        _log(db, '[ Priprava souboru main_mets, info, md5 a bagit manifestu ]');
+        _log(db, archiveId, '[ Priprava souboru main_mets, info, md5 a bagit manifestu ]');
 
         // todo: STRUCT MAP
         metsFile = metsFile.replace('###filesec###', filesec);
@@ -629,7 +687,7 @@ client.connect(urlmongo, { useNewUrlParser: true }, function (err, client) {
         // =================================================
         //   RENAME
         // =================================================
-        _log(db, '[ Dokoncovani SIP a BAGIT baliku ]');
+        _log(db, archiveId, '[ Dokoncovani SIP a BAGIT baliku ]');
         for (var ri=0; ri<renameList.length; ri++) {
           var renameItem = renameList[ri];
           if (fs.existsSync(renameItem.curr)) {
@@ -638,8 +696,7 @@ client.connect(urlmongo, { useNewUrlParser: true }, function (err, client) {
             var collectionFileName = collectionFileNameSplitted[collectionFileNameSplitted.length-1];
             await db.collection(renameItem.curr.indexOf('/isoimage/')>-1 ? mediaCollection : filesCollection).updateOne({ _id: renameItem._id }, { $set: { fileName: collectionFileName } });
           } else {
-            _log(db, '!!! ' + renameItem.curr);
-            _log(db, '------');
+            _log(db, archiveId, '!!! ' + renameItem.curr);
           }
         }
 
@@ -668,13 +725,13 @@ client.connect(urlmongo, { useNewUrlParser: true }, function (err, client) {
           fs.writeFileSync(archiveDir + '/bagit.txt', "BagIt-Version: 0.97\nTag-File-Character-Encoding: UTF-8");
         });
 
-        _log(db, '[ UKONCENE ZPRACOVANI ARCHIVU: ' + archive.uuid + ' ]');
+        _log(db, archiveId, '[ UKONCENE ZPRACOVANI ARCHIVU: ' + archive.uuid + ' ]');
         processedArchives++;
 
       } // archivy
 
       if (processedArchives) {
-        _log(db, '[ Idle ]');
+        _log(db, archiveId, '[ Idle ]');
       }
       else {
         // zadny procesovany archiv, poznac cas dobehnuti cronu
@@ -691,7 +748,7 @@ client.connect(urlmongo, { useNewUrlParser: true }, function (err, client) {
       client.close();
 
     } catch(e) {
-      _log(db, '[ ' + e + ' ]');
+      _log(db, archiveId, '[ ' + e + ' ]');
       client.close();
     } // try/catch
 

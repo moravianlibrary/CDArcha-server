@@ -1,8 +1,7 @@
-/// version 1.18.10
+/// version 1
 
 /// mongodb://url:port/database  - spojeni na mongodb
-var urlmongo = 'mongodb://localhost:27017';
-var mongodb = 'cdarcha_db';
+var urlmongo = "mongodb://127.0.0.1:27017"
 /// timeout dotazu na backend (ms)
 var timeout = 15 * 1000;
 
@@ -13,7 +12,7 @@ var frontPortHttps = 1338;
 // =========================================
 
 /// CD Archa server v1
-var okcz = require('cdarcha1_server');
+var okcz = require('cdarcha-server');
 
 /// node.js moduly
 var mongo = require('mongodb');
@@ -25,9 +24,9 @@ var fs = require('fs');
 
 /// soukromy klic, certifikat a intermediate certifikat; vse pro HTTPS
 var httpsOptions = {
-  key: fs.readFileSync('cert/serverkey.pem'),
-  cert: fs.readFileSync('cert/cache.obalkyknih.cz-1404285806.pem'),
-  ca: [ fs.readFileSync('cert/tcs-ca-bundle.pem') ]
+  key: fs.readFileSync('cert/private/cdarchakey.pem'),
+  cert: fs.readFileSync('cert/cdarcha.pem'),
+  ca: [ fs.readFileSync('cert/chain_TERENA_SSL_CA_3.pem') ]
 };
 
 // **********************************************
@@ -40,7 +39,8 @@ var httpsOptions = {
 
 client.connect(urlmongo, function (err, client) {
   if (err) {  return console.dir(err); }
-  var db = client.db(mongodb);
+  var db = client.db('cdarcha_db');
+  console.log('mongodb connected...');
 
   var arg1 = process.argv.slice(2);
   var test = false;
