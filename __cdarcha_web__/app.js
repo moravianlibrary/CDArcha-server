@@ -26,7 +26,7 @@ const upload = multer({ dest: path.join(__dirname, 'uploads') });
 /**
  * Load environment variables from .env file, where API keys and passwords are configured.
  */
-dotenv.load({ path: '.env' });
+dotenv.config({ path: '.env' });
 
 /**
  * Controllers (route handlers).
@@ -37,6 +37,7 @@ const apiController = require('./controllers/api');
 const biblioController = require('./controllers/biblio');
 const archiveController = require('./controllers/archive');
 const contentController = require('./controllers/content');
+const cronlogController = require('./controllers/cronlog');
 
 /**
  * API keys and Passport configuration.
@@ -161,12 +162,21 @@ app.get('/cdarcha/archivelist/dataset', archiveController.getListDataset);
 app.get('/cdarcha/archivelist/edit', archiveController.getEditForm);
 app.post('/cdarcha/archivelist/edit', archiveController.postEditForm);
 app.get('/cdarcha/archivelist/del', archiveController.delArchive);
+app.get('/cdarcha/archive/mount', archiveController.mountArchive);
+app.get('/cdarcha/archive/unmount', archiveController.unmountArchive);
 
 /**
  * Content
  */
+app.get('/cdarcha/content/', contentController.redirect);
 app.get('/cdarcha/content/media/dataset', contentController.getMediaDataset);
 app.get('/cdarcha/content/files/dataset', contentController.getFilesDataset);
+
+/**
+ * Log
+ */
+app.get('/cdarcha/cronlog', cronlogController.getList);
+app.get('/cdarcha/cronlog/dataset', cronlogController.getDataset);
 
 /**
  * API examples routes.
