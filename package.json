@@ -29,7 +29,7 @@
     "fs": "0.0.1-security",
     "get-folder-size": "^2.0.1",
     "http": "0.0.0",
-    "http-proxy": "^1.18.0",
+    "http-proxy": "^1.18.1",
     "https": "^1.0.0",
     "lockfile": "^1.0.4",
     "md5-file": "^4.0.0",
