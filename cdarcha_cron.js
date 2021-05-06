@@ -45,8 +45,10 @@ client.connect(urlmongo, { useNewUrlParser: true }, function (err, client) {
     try {
 
       var processedArchives = 0;
-      const cursorArchives = db.collection(archiveCollection).find({ _id: mongo.ObjectId('5e0a006734791a079424db9e') });
-//      const cursorArchives = db.collection(archiveCollection).find({ status: 1 });
+	  // produkcni
+      const cursorArchives = db.collection(archiveCollection).find({ "status": 1, "dtCreated" : { $gte : 1611572545612 } });
+	  // testovaci - jeden zaznam
+      //const cursorArchives = db.collection(archiveCollection).find({ _id: mongo.ObjectId('5c17802233cf5476d55ea92b') });
       while(await cursorArchives.hasNext()) {
         const archive = await cursorArchives.next();
 

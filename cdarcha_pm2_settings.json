@@ -1,8 +1,0 @@
-[{
-  "name"      : "cdarcha",
-  "script"    : "./.js",
-  "instances" : "1",
-  "error_file" : "./log/cdarcha-err.log",
-  "out_file"   : "./log/cdarcha-out.log",
-  "pid_file"   : "./run/cdarcha.pid"
-}]

@@ -1,0 +1,263 @@
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div style="text-align:center;"></div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div style="text-align:center;">'''CDARCHA - SERVER'''verze 1.0</div>
+
+
+<div style="text-align:center;">POPIS API A MANUÁL SPRÁVCE</div>
+
+
+<div style="text-align:center;"></div>
+
+<div style="text-align:center;"></div>
+
+<div style="text-align:center;"></div>
+
+<div style="text-align:center;"></div>
+
+<div style="text-align:right;"></div>
+
+<div style="text-align:right;"></div>
+
+<div style="text-align:right;"></div>
+
+<div style="text-align:right;"></div>
+
+<div style="text-align:right;">Aktualizace dokumentu: 30.12.2017</div>
+
+= CDARCHA - SERVER =
+
+Je API pro účely archivace médií v prostředí knihoven. Poskytuje volání pro podporu aplikace CDARCHA – klient. Api nevyžaduje použití společně se zmíněnou aplikací. Lze použít s libovolným HTTP klientem podporujícím chunkovaný přenos dat.
+
+API poskytuje volání k:* Zjišťování existence už podobného archivovaného média na základě zjednodušeného identifikátoru média.
+* Vytvoření záznamu archivovaného média včetně archivace zdrojového bibliografického záznamu.
+* Zaslání ISO archivovaného média (chunkovaný přenos).
+* Ověření kontrolního součtu archivovaného média.
+
+
+
+
+
+API obsahuje tyto dotazy:* /api/getmedia – pro zjištění existence už archivovaného stejného titulu.
+* /api/import – pro vytvoření záznamu archivovaného média.
+* /file/upload – pro upload ISO archivovaného média.
+* /api/gethash – pro zjištění kontrolního souboru archivovaného média na serveru.
+* /api/media – pro získání kompletních metadat archivovaného média včetně URL ke stažení archivovaného média, originálního bibliografického záznamu apod.
+
+
+
+
+
+Při archivaci média jiným klientem je doporučeno pořadí volání tak jak následují v předchozím odstavci tj. od zjištění existence už existujícího stejného archivovaného média, přes založení záznamu archivace, upload samotného média a zjištění kontrolního součtu, čim se proces archivace v případě bezproblémového přenosu ukončí. Získání kompletního metadatového záznamu média není pro proces archivace nutný.
+
+
+== Volání /api/getmedia ==
+
+Slouží pro zjištění existence už archivovaného média na základě zjednodušeného identifikátoru média. Příklad:
+
+https://195.113.155.152/api/getmedia/?quickid<nowiki>=1C9A6AFD504496128</nowiki>
+
+Jediným povinným parametrem dotazu je '''quickid''' – zjednodušený identifikátor média vypočtený spojením řetězců identifikátoru svazku + velikosti média v bytech. Zjednodušený identifikátor v příkladu se zkládá z identifikátoru svazku „1C9A6AFD5044“ a velikosti média v bytech „96128“.
+
+Odpovědí API jsou data ve formátu JSON:
+
+'''title''' : Titul archivovaného média získaný z bibliografického záznamu
+'''authors''' : Hlavní autoři archivovaného média získaný z bib. záznamu
+'''year''' : Rok vydání archivovaného média získaný z bib. záznamu
+'''size''' : Velikost média v bytech
+'''mediaReadProblem''' : Příznak výskytu problému při čtení média. Pokud bude příznak = 0 není doporučeno archivaci média opakovat. V opačném případě, pokud problém při čtení média při předchozí archivaci nastal a hodnota příznaku = 1 je doporučeno archivaci opakovat.
+'''dtUpdate''' : poslední aktualizace záznamu média
+
+Příklad odpovědi API, pokud došlo k nalezení záznamu podle zjednodušeného identifikátoru média:
+
+
+<div style="margin-left:0in;margin-right:0in;">{"dtUpdate":"9.2.2018","title":"Juniorstav ... : ... odborná konference doktorského studia = ... professional konference of postgraduate students : sborník anotací : Vysoké učení technické v Brně, Fakulta stavební ...","authors":"","year":"[1999?]-","size":482607104,"mediaReadProblem":0}</div>
+
+V případě, že se záznam nenajde tj. médiu vložené v mechanice ještě nebylo archivováno bude odpovědí:
+
+
+<div style="margin-left:0in;margin-right:0in;">{"status":"not found"}</div>
+
+V případě, že nastane problém při práci s daty na úrovni aplikace CDArcha server, nebo při práci s databází, bude odpovědí:
+
+
+{"status":"error", "msg":"Text chybove hlasky"}
+
+
+== Volání /api/import ==
+
+Slouží pro založení záznamu archivovaného média. Jedná se o metadatový záznam popisující archivované médium. Obsahuje identifikátory bibliografického záznamu ISBN, ISSN, EAN, ČNB a OCLC a dále název titulu, hlavní autory titulu, rok vydání, originál bibliografického záznamu, apod.
+
+Parametry volání jsou:
+
+'''ean13''' : Reprezentuje ISBN, ISSN a EAN kód bibliografického záznamu. Zloučení identifikátorů ISBN a ISSN je z důvodu, že tyto identifikátory je možné konvertovat na EAN13. Pomocí API se uvádí hodnota jednoho z těchto identifikátorů ve tvaru v jakém se vyskytuje v bilbiografickém záznamu a o konverzi na EAN13 se postará API.
+'''ismn''' : Identifikátor ISMN tak jak se vyskytuje v bib. záznamu.
+'''oclc''' : Identifikátor OCLC tak jak se vyskytuje v bib. záznamu.
+'''nbn ''': Identifikátor ČNB tak jak se vyskytuje v bib. záznamu.
+'''uuid''' : Identifikátor UUID.
+'''title''' : Titul archivovaného média tak jak se uvádí v bib. záznamu.
+'''year''' : Rok vydání archivovaného média tak jak se uvádějí v bib. záznamu.
+'''authors''' : Hlavní autoři archivovaného média tak jak se uvádějí v bib. záznamu. Parametry title, year a authors jsou pouze informatívní a není podle nich možné v vyhledávat.
+'''part_year''' : Rok vydání čísla periodika v případě archivace periodika.
+'''part_volume''' : Ročník vydání čísla periodika.
+'''part_no''' : Číslo vydání periodika.
+'''part_name''' : Název části vícesvazkové monografie.
+'''part_note''' : Pokud se jedná o periodikum a rok/ročník/číslo periodika není v bib. záznamu zapsáno odděleně uvádí se v tomto parametru řetězec, tak jak se uvádí v bibliografickém záznamu.
+
+Volání /api/import se provádí metodou POST s kódováním multipart. Následující data je potřené vkládat jako uploady souborů. Ve všech případech se jedná o textový soubor.
+
+Obsahem volání /api/import jsou tyto soubory:
+
+
+<div style="margin-left:0in;margin-right:0in;">'''meta.xml ''': Technická metadata klienta. Verze klienta, uživatele, který archivaci provádí, technická data PC na kterém došlo k archivaci. Obsah souboru není předepaná a slouží pro řešení případných problému a identifikaci ubšluby archivačního klienta, PC, apod.</div>
+<div style="margin-left:0in;margin-right:0in;">'''marcxml.xml''' : Obsahem je MARC záznam transformovaný do formátu MARC XML.</div>
+<div style="margin-left:0in;margin-right:0in;">'''mods.xml''' : Obsahem souboru je MARC záznam transformovaný do formátu MODS.</div>
+
+<u>'''Po úspěšném provedení API volání je odpovědí identifikátor nově založeného metadatového záznamu média.'''</u> Společně s metadaty jsou uloženy i 3 XML soubory. Do metadatového záznamu je poznačena cesta k těmtou souborům.
+
+
+Odpověď API je potřebné pro účel pokračování v archivaci (zaslání samotného média) ponechat/zapamatovat.
+
+
+Odpoveď API musí být s návratovým kódem 200. Pokud je návratový kód jiný než 200, např. 404 došlo při ukládání dat k problému.
+
+
+== Volání /file/upload ==
+
+Slouží pro zaslání ISO souboru archivovaného média. Využívá se metoda chunk přenosu, kdy jsou data zasíláná po částech a výsledný dokument je seskládán na straně serveru.
+
+https://195.113.155.152/file/upload/
+
+Parametry volání se zasílajé pomocí HTTP hlaviček:
+
+<div style="margin-left:0in;margin-right:0in;">'''x-cdarcha-mediaid''' : Identifikátor vloženého média pomocí volání /api/import</div>
+<div style="margin-left:0in;margin-right:0in;">'''x-cdarcha-checksum''' : Kontrolní součet SHA1 vkládaného média.</div>
+<div style="margin-left:0in;margin-right:0in;">'''x-cdarcha-filetype''' : Typ souboru vkládaného média. Výchozí hodnota je ISO</div>
+<div style="margin-left:0in;margin-right:0in;">'''x-cdarcha-quickid''' : Zjednodušený identifikátor média.</div>
+<div style="margin-left:0in;margin-right:0in;">'''x-cdarcha-mediasize''' : Velikost média v bytech.</div>
+<div style="margin-left:0in;margin-right:0in;">'''x-cdarcha-mediareadproblem''' : Příznak, jestli při čtení média došlo k problému = 1, nebo ne = 0.</div>
+<div style="margin-left:0in;margin-right:0in;">'''x-cdarcha-forcedupload''' : V případě, že archivované médium už na serveru existuje je vhodné, aby klient o tomto uživatele informoval. Pokud se uživatel i v případě, že médium už bylo archivované rozhodne archivaci opakovat tento příznak = 1. V opačném případě = 0.</div>
+
+Po úspěsném ukončení přenosu bude odpovědí API návratový kód 200 s textem:
+
+ok
+
+V případě jiného návratového kódu, např. 404 došlo počas přenosu k problému a přenos je vhodné opakovat.
+
+
+Po ukončení přenosu API provádí výpočet kontrolního součtu na straně serveru. Kontrolní součet je počítán už v průběhu zasílání dat klientem a výpočet není zásádním způsobem velikostí média ovlyvněn. Nemusí to být ale pravidlem. Odpověď API je zásláná po ukončení přenosu a výpočet kontrolního součtu může následně pokračovat neznámou dlouhou dobu. Proto se pro klienta doporučuje pro ověření uspěšnosti zaslání dat dotaz na úspěšnost zaslání opakovat v intervalech 1000ms v max. 60 opakováních.
+
+
+Zaslaný soubor média je po dobu zasílání dat ukládán do dočasného adresáře: /'''home/cdarcha/cdarcha/tmp/iso''' a následně po úspešném porovnání kontrolního součtu na serveru s kontrolním součtem zaslaným klientem je soubor přesunut do trvalého úložiště: '''/mnt/cdarcha/iso'''
+
+Pokud se kontrolní součty neshodují, je soubor z dočasného úložiště smazán a do trvalého úložiště se nepřesouvá. Data do DB ohledně uploadu jsou zaznamenána v každém případě.
+
+
+== Volání /api/gethash ==
+
+Slouží pro získání kontrolního součtu média. Příklad volání:
+
+https://195.113.155.152/api/gethash/?mediaid<nowiki>=5a7cc33083e25dc3cca36c3e</nowiki>
+
+V případě, že záznam média, nebo archivovaého ISO souboru neexistuje je návratovým kódem:
+
+<div style="margin-left:0in;margin-right:0in;">{"status":"not found"}</div>
+
+V případě, že výpočet kontrolního součtu média ještě nebyl dokončen, je odpovědí:
+
+{"status":"not prepared"}
+
+Pokud klient právě proved archivaci a odpovědí API je „not prepared“ doporučuje se volání po 1000ms opakovat max 60x. Pokud se ani po této době odpověď nezmění došlo na straně serveru k problému s výpočtem kontrolního součtu a je vhodné přenos opakovat.
+
+Odpověď s kontrolním součtem archivovaného média:
+
+<div style="margin-left:0in;margin-right:0in;">{"status":"ok","hash":"fa0ec6697c1332e918ab46b831acb130bc6088e8"}</div>
+
+Po získání kontrolního součtu archivovaného média klient rozhoduje, jestli se prenos povedl, nebo ne. Pokud je kontrolní součet rozdílní s kontrolním součtem lokálního souboru média je vhodné přenos dat opakovat.
+
+
+== Volání /api/media ==
+
+Slouží pro získání dat archivovaného média. Odpovědí jsou metadata a URL archivovaného média a XML souborům bibliografického záznamu. Příklad volání:
+
+https://195.113.155.152/api/media/?multi=[{"nbn":"cnb002176734"}]
+
+Odpovědí API je kontejner:
+
+'''['''
+ {
+  "_id": "5a7d7240edd07d18fb0a577f",
+  "oclc": "(OCoLC)724299817",
+  "nbn": "cnb002176734",
+  "title": "Juniorstav ... : ... odborná konference doktorského studia = ... professional konference of postgraduate students : sborník anotací : Vysoké učení technické v Brně, Fakulta stavební ...",
+  "authors": "",
+  "year": "[1999?]-",
+  "dtLastUpdate": "2018-02-09T10:04:48.179Z",
+  "dtCreated": "2018-02-09T10:04:48.179Z",
+  "mediaFileId": "5a7d732aedd07d18fb0a5780",
+  "bibinfo": {
+   "nbn": "cnb002176734"
+  },
+  "mediaFileUrl": "https://195.113.155.152/storage/iso/5a7d732aedd07d18fb0a5780.iso",
+  "marcxmlFileUrl": "https://195.113.155.152/storage/marcxml/5a7d7240edd07d18fb0a577f.xml",
+  "modsFileUrl": "https://195.113.155.152/storage/mods/5a7d7240edd07d18fb0a577f.xml",
+  "metaFileUrl": "https://195.113.155.152/storage/meta/5a7d7240edd07d18fb0a577f.xml"
+ }
+]
+
+Je možné dotazovat se na víc záznamů současně vytvořením druhého objektu v poli multi. Dotazovat je možné podle identifikátorů média:* ean13 (co je ISBN, ISSN, nebo EAN kód),
+* nbn – číslo národní bibliografie,
+* a dále oclc, ismn, nebo uuid.
+* Pro periodika je nutné připojit identifikaci čísla rok/rořník/číslo part_year, part_volume, part_no. Pro vícesvazkové monografie je potřebné doplnit identifikací části part_name.
+
+
+
+Další pďíklady dotazu:
+
+'''Známe ČNB i OCLC zároveň. Nalezneme záznam, který obsahuje jeden z identifikátorů, nebo i obě současně. Vrácen je vždy jeden zázdnam.'''
+https://195.113.155.152/api/media/?multi=[{"nbn":"cnb002176734","oclc":"(OCoLC)724299817"}]
+
+ '''Příklad dotazu na víc médií v jednom dotazu:'''
+ 
+ https://195.113.155.152/api/media/?multi=[{"nbn":"cnb002176734"],["oclc":"(OCoLC)724299817"}]
