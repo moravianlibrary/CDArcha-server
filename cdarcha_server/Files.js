@@ -1,6 +1,7 @@
 "use strict";
 // ====================== files.TS ===================
 exports.__esModule = true;
+exports.Files = void 0;
 var filesCollection = "files";
 var mediaCollection = "media";
 var fs = require('fs');

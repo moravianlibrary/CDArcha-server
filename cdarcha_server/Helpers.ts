@@ -12,7 +12,7 @@ const usersCollection: string = 'users';
 
 // ====================== HELPER.TS ===================
 
-const bcrypt = require('bcrypt-nodejs');
+const bcrypt = require('bcrypt');
 const crypto = require('crypto');
 
 export class Helpers {

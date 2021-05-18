@@ -1,7 +1,7 @@
 {
   "name": "cdarcha_server",
   "version": "1.18.10",
-  "description": "Archivacni server CDArcha",
+  "description": "Archivační server CDArcha",
   "main": "app.js",
   "directories": {
     "doc": "doc"
@@ -13,10 +13,10 @@
     "type": "git",
     "url": "git+https://github.com/moravianlibrary/CDArcha-server.git"
   },
-  "author": "MZK",
-  "license": "ISC",
+  "author": "Moravská zemská knihovna v Brně",
+  "license": "GPLv2",
   "bugs": {
     "url": "https://github.com/moravianlibrary/CDArcha-server/issues"
   },
-  "homepage": "https://github.com/moravianlibrary/CDArcha-server#readme",
+  "homepage": "https://github.com/moravianlibrary/CDArcha-server#readme"
 }

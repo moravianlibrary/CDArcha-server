@@ -1,6 +1,7 @@
 "use strict";
 // ====================== PERMISSIONS.TS ===================
 exports.__esModule = true;
+exports.Permissions = void 0;
 var Permissions = /** @class */ (function () {
     function Permissions() {
     }

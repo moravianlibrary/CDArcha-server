@@ -1,6 +1,7 @@
 "use strict";
 // ====================== Archive.TS ===================
 exports.__esModule = true;
+exports.Archive = void 0;
 var uuidv1 = require('uuid/v1');
 var archiveCollection = "archive";
 var Archive = /** @class */ (function () {

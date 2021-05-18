@@ -1,5 +1,6 @@
 "use strict";
 exports.__esModule = true;
+exports.Helpers = void 0;
 // url frontendu / spolecne url vsech frontnendu
 //const urlReplace: string = "192.168.1.11:1337" //local
 var urlReplace = "cdarcha.mzk.cz"; //server
@@ -8,7 +9,7 @@ var urlReplace = "cdarcha.mzk.cz"; //server
 var urlMain = "cdarcha.mzk.cz"; //server
 var usersCollection = 'users';
 // ====================== HELPER.TS ===================
-var bcrypt = require('bcrypt-nodejs');
+var bcrypt = require('bcrypt');
 var crypto = require('crypto');
 var Helpers = /** @class */ (function () {
     function Helpers() {

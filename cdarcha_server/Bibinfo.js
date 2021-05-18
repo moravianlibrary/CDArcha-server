@@ -1,6 +1,7 @@
 "use strict";
 // ====================== BIBINFO.TS ===================
 exports.__esModule = true;
+exports.Bibinfo = void 0;
 var metaCollection = "biblio";
 var Bibinfo = /** @class */ (function () {
     function Bibinfo(bibinfo) {

@@ -1,6 +1,7 @@
 "use strict";
 // ====================== STATISTICS.TS ===================
 exports.__esModule = true;
+exports.Statistics = void 0;
 var metaCollection = "biblio";
 var Statistics = /** @class */ (function () {
     function Statistics() {

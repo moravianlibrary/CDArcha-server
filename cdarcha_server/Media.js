@@ -1,6 +1,7 @@
 "use strict";
 // ====================== Media.TS ===================
 exports.__esModule = true;
+exports.Media = void 0;
 var mediaCollection = "media";
 var Media = /** @class */ (function () {
     function Media(media) {
