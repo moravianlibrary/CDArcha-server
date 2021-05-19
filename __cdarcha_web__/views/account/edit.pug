@@ -12,13 +12,9 @@ block content
     .form-group.row
       label.col-md-3.col-form-label.font-weight-bold.text-right(for='sigla') Sigla
       .col-md-7
-        input.form-control(type='text', name='sigla', id='sigla', placeholder='Sigla', value=data.sigla, required)
+        input.form-control(type='sigla', name='sigla', id='sigla', placeholder='Sigla', value=data.sigla, required)
     .form-group.row
-      label.col-md-3.col-form-label.font-weight-bold.text-right(for='institution') Instituce
-      .col-md-7
-        input.form-control(type='text', name='institution', id='institution', placeholder='institution', value=data.institution, required)
-    .form-group.row
-      label.col-md-3.col-form-label.font-weight-bold.text-right(for='role') Role
+      label.col-md-3.col-form-label.font-weight-bold.text-right(for='sigla') Role
       .col-md-7
         select.form-control(name='roleType', id='role', placeholder='Zvolte roli', required)
           option(value="0", selected= data.roleType == 0) Sysadmin (může všechno i zakládat uživatele)

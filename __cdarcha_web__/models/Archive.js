@@ -6,6 +6,7 @@ const archiveSchema = new mongoose.Schema({
       ref: 'Biblio'
   },
   status: Number,
+  uuid: String,
 
   dtCreated: Date,
   dtLastUpdate: Date

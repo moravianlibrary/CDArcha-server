@@ -1,7 +1,7 @@
 var $tableBiblio = $('#table-biblio'),
     $tableArchive = $('#table-archive'),
     $tableMedia = $('#table-content-media'),
-    $tableFiles = $('#table-content-files'),
+    $treeviewFiles = $('#table-content-treeview'),
     selections = [];
 
 // ---------------------------------------
@@ -10,6 +10,11 @@ var $tableBiblio = $('#table-biblio'),
 
 function initTableBiblio(table) {
     table = table || $tableBiblio;
+    var hash = window.location.hash;
+    if (hash.length) {
+        hash = hash.substring(1,hash.length);
+        table.data('search-text', hash);
+    }
     table.bootstrapTable({
         height: getHeight(),
         locale: 'cs-CZ',
@@ -113,6 +118,11 @@ window.operateEventsBiblio = {
 
 function initTableArchive(table) {
   table = table || $tableArchive;
+  var hash = window.location.hash;
+  //if (hash.length) {
+  //  hash = hash.substring(1,hash.length);
+  //  table.data('search-text', hash);
+  //}
   table.bootstrapTable({
         height: getHeight(),
         locale: 'cs-CZ',
@@ -120,6 +130,20 @@ function initTableArchive(table) {
             {
                 title: 'ID archivu',
                 field: '_id',
+                align: 'left',
+                valign: 'middle',
+                visible: false,
+                sortable: true
+            }, {
+                title: 'UUID',
+                field: 'uuid',
+                align: 'left',
+                valign: 'middle',
+                visible: false,
+                sortable: true
+            }, {
+                title: 'UUID + Titul',
+                field: 'uuidTitle',
                 align: 'left',
                 valign: 'middle',
                 sortable: true
@@ -147,11 +171,11 @@ function initTableArchive(table) {
             }, {
                 field: 'operate',
                 title: 'Operace',
-                align: 'center',
+                align: 'right',
                 events: operateEventsArchive,
                 formatter: operateFormatterArchive
             }
-        ]
+        ],
     });
     // sometimes footer render error.
     setTimeout(function () {
@@ -180,7 +204,13 @@ function operateFormatterArchive(value, row, index) {
         '</a> &nbsp; ',
         '<a class="remove-archive" href="javascript:void(0)" title="Odstránit">',
         '<i class="glyphicon glyphicon-remove"></i>',
-        '</a> &nbsp; ',
+        '</a> <br/>',
+        '<a class="mount-archive" href="javascript:void(0)" title="Připojit do vašeho sdíleného adresáře">',
+        '<i class="fa fa-plug"></i>',
+        '</a>&nbsp;',
+        '<a class="unmount-archive" href="javascript:void(0)" title="Odpojit všechny archivy ze sdíleného adresáře" style="margin-right:-4px;">',
+        '<i class="fa fa-power-off"></i>',
+        '</a><br/>',
         '<a class="show-content" href="#" title="Zobrazit obsah tohoto archivu">',
         '<i class="glyphicon glyphicon-arrow-right"></i>',
         '</a>'
@@ -189,11 +219,13 @@ function operateFormatterArchive(value, row, index) {
 
 function statusFormatterArchive(value, row, index) {
     switch (row.status) {
-        case 0: return '<strong class="bg-red">Rozpracované na klientovi</strong>';
-        case 1: return '<strong class="bg-cyan">Ukončené na serveru</strong>';
-        case 2: return '<strong class="bg-cyan">Rozpracované na serveru</strong>';
-        case 3: return '<strong class="bg-yellow">Připravené na archivaci</strong>';
+        case 0: return '<strong class="bg-red">Rozpracované&nbsp;na&nbsp;klientovi</strong>';
+        case 1: return '<strong class="bg-cyan">Ukončené&nbsp;na&nbsp;klientovi</strong>';
+        case 2: return '<strong class="bg-cyan">Rozpracované&nbsp;na&nbsp;serveru</strong>';
+        case 3: return '<strong class="bg-yellow">Připravené&nbsp;na&nbsp;archivaci</strong>';
         case 4: return '<strong>Archivované</strong>';
+        case 5: return '<strong>Timeout&nbsp;analýzy&nbsp;média</strong>';
+        case 6: return '<strong>Jiný&nbsp;problém&nbsp;s&nbsp;analýzou&nbsp;média</strong>';
     }
 }
 
@@ -221,22 +253,52 @@ window.operateEventsArchive = {
         }
     },
     'click .show-content': function (e, value, row, index) {
-        var dataUrlMedia = $tableMedia.data('url').split('?'),
-            dataUrlFiles = $tableFiles.data('url').split('?'),
+        var dataUrlMedia = $tableMedia.data('url'),
+            dataUrlFiles = $treeviewFiles.data('url'),
             date = new Date(row.dtCreated);
             title = 'Obsah archivu',
-            subtitle = 'Archivu s identifikátorem ' + row._id + ' / vytvořeného ' + date.getDate() + '.' + date.getMonth() + '.' + date.getFullYear() + ' ' + date.getHours() + ':' + date.getMinutes();
+            subtitle = 'Archivu s identifikátorem UUID ' + row.uuid + ' / vytvořeného ' + date.getDate() + '.' + (date.getMonth()+1) + '.' + date.getFullYear() + ' ' + date.getHours() + ':' + date.getMinutes();
+
+        if (dataUrlMedia) {
+            dataUrlMedia = dataUrlMedia.split('?');
+        } else {
+            dataUrlMedia = [ '/cdarcha/content/media/dataset' ];
+        }
+
+        if (dataUrlFiles) {
+            dataUrlFiles = dataUrlFiles.split('?');
+        } else {
+            dataUrlFiles = [ '/cdarcha/content/files/dataset' ];
+        }
 
         $tableMedia.data('url', dataUrlMedia[0] + '?search=' + row._id);
-        $tableFiles.data('url', dataUrlFiles[0] + '?search=' + row._id);
+        $treeviewFiles.data('url', dataUrlFiles[0] + '?search=' + row._id);
         initTableMedia($tableMedia);
-        initTableFiles($tableFiles);
-        $('#tab-container').css('margin-left', '-200%');
+        initTreeviewFiles($treeviewFiles);
+        if (window.location.pathname == '/cdarcha/archivelist') {
+          $('#tab-container').css('margin-left', '-100%'); // toto se pouziva na strance archivu
+        } else {
+          $('#tab-container').css('margin-left', '-200%');
+        }
         $('#btn-back2').data('title', $('h3').text()).data('subtitle', $('#subtitle').text());
         $('h3').text(title);
         $('#subtitle').text(subtitle);
         $('.menu-archive').removeClass('active');
         $('.menu-content').show().addClass('active');
+    },
+    'click .mount-archive': function (e, value, row, index) {
+        var uuid = row.uuid;
+        var xhttp = new XMLHttpRequest();
+        xhttp.open('GET', '/cdarcha/archive/mount?uuid='+uuid, true);
+        xhttp.send();
+        $('#archive-pluged').toast({ delay: 3000 }).toast('show');
+    },
+    'click .unmount-archive': function (e, value, row, index) {
+        var uuid = row.uuid;
+        var xhttp = new XMLHttpRequest();
+        xhttp.open('GET', '/cdarcha/archive/unmount', true);
+        xhttp.send();
+        $('#archive-unpluged').toast({ delay: 3000 }).toast('show');
     }
 };
 
@@ -258,6 +320,13 @@ function initTableMedia(table) {
                 valign: 'middle',
                 sortable: true,
                 visible: false
+            }, {
+                title: 'Soubor archivu',
+                field: 'fileName',
+                align: 'left',
+                valign: 'middle',
+                sortable: false,
+                visible: true
             }, {
                 title: 'Č.média',
                 field: 'mediaNo',
@@ -321,12 +390,6 @@ function initTableMedia(table) {
                 sortable: true,
                 visible: false,
                 formatter: dateFormatter
-            }, {
-                field: 'operate',
-                title: 'Operace',
-                align: 'center',
-                events: operateEventsMedia,
-                formatter: operateFormatterMedia
             }
         ]
     });
@@ -340,7 +403,11 @@ function initTableMedia(table) {
         });
     });
     $('#btn-back2').click(function(){
-        $('#tab-container').css('margin-left', '-100%');
+        if (window.location.pathname == '/cdarcha/archivelist') {
+          $('#tab-container').css('margin-left', '0'); // toto se pouziva na strance archivu
+        } else {
+          $('#tab-container').css('margin-left', '-100%');
+        }
         $('h3').text($(this).data('title'));
         $('#subtitle').text($(this).data('subtitle'));
         $('.menu-archive').addClass('active');
@@ -352,15 +419,23 @@ function initTableMedia(table) {
 
 function operateFormatterMedia(value, row, index) {
     return [
-        '<a class="download-media" href="/storage/' + row.archive + '/mastercopymedia/' + row._id + '.' + row.fileType + '" title="Stáhnout" target="_blank">',
-        '<i class="glyphicon glyphicon-download-alt"></i>',
+        '<a class="mount-archive" href="javascript:void(0)" title="Připojit do vašeho sdíleného adresáře">',
+        '<i class="fa fa-plug"></i>',
         '</a>'
     ].join('');
+    /*
+    '<a class="download-media" href="/storage/' + row.archive + '/mastercopymedia/' + row._id + '.' + row.fileType + '" title="Stáhnout" target="_blank">',
+    '<i class="glyphicon glyphicon-download-alt"></i>',
+    */
 }
 
 window.operateEventsMedia = {
-    'click .download-media': function (e, value, row, index) {
-        console.log('download-media');
+    'click .mount-archive': function (e, value, row, index) {
+        var fileName = row.fileName.split('_');
+        var uuid = fileName[0];
+        var xhttp = new XMLHttpRequest();
+        xhttp.open('GET', '/cdarcha/archive/mount?uuid='+uuid, true);
+        xhttp.send();
     }
 };
 
@@ -369,88 +444,72 @@ window.operateEventsMedia = {
 //   Files
 // ---------------------------------------
 
-function initTableFiles(table) {
-  table = table || $tableFiles;
-  table.bootstrapTable({
-        height: getHeight(),
-        locale: 'cs-CZ',
-        columns: [
-            {
-                title: 'ID souboru',
-                field: '_id',
-                align: 'left',
-                valign: 'middle',
-                sortable: true,
-                visible: false
-            }, {
-                title: 'Typ souboru',
-                field: 'fileType',
-                align: 'left',
-                valign: 'middle',
-                sortable: true
-            }, {
-                title: 'Velikost souboru',
-                field: 'mediaSize',
-                align: 'left',
-                valign: 'middle',
-                sortable: true,
-                formatter: sizeFormatter
-            }, {
-                title: 'Vytvořeno',
-                field: 'dtCreated',
-                align: 'left',
-                valign: 'middle',
-                sortable: true,
-                visible: false,
-                formatter: dateFormatter
-            }, {
-                title: 'Kontrolní součet',
-                field: 'checkSum',
-                align: 'left',
-                valign: 'middle',
-                sortable: true,
-                visible: false
-            }, {
-                title: 'Poslední úprava',
-                field: 'dtLastUpdate',
-                align: 'left',
-                valign: 'middle',
-                sortable: true,
-                visible: false,
-                formatter: dateFormatter
-            }, {
-                field: 'operate',
-                title: 'Operace',
-                align: 'center',
-                events: operateEventsFiles,
-                formatter: operateFormatterFiles
-            }
-        ]
-    });
-    // sometimes footer render error.
-    setTimeout(function () {
-        table.bootstrapTable('resetView');
-    }, 200);
-    $(window).resize(function () {
-        table.bootstrapTable('resetView', {
-            height: getHeight()
-        });
-    });
+function initTreeviewFiles(treeview) {
+  el = treeview || $treeviewFiles;
+  /*
+  var defaultData = [
+          {
+            text: 'Parent 1',
+            href: '#parent1',
+            tags: ['4'],
+            nodes: [
+              {
+                text: 'Child 1',
+                href: '#child1',
+                tags: ['2'],
+                nodes: [
+                  {
+                    text: 'Grandchild 1',
+                    href: '#grandchild1',
+                    tags: ['0']
+                  },
+                  {
+                    text: 'Grandchild 2',
+                    href: '#grandchild2',
+                    tags: ['0']
+                  }
+                ]
+              },
+              {
+                text: 'Child 2',
+                href: '#child2',
+                tags: ['0']
+              }
+            ]
+          },
+          {
+            text: 'Parent 2',
+            href: '#parent2',
+            tags: ['0']
+          },
+          {
+            text: 'Parent 3',
+            href: '#parent3',
+             tags: ['0']
+          },
+          {
+            text: 'Parent 4',
+            href: '#parent4',
+            tags: ['0']
+          },
+          {
+            text: 'Parent 5',
+            href: '#parent5'  ,
+            tags: ['0']
+          }
+        ];
+  el.treeview({
+    data: defaultData
+  });
+  */
+  $.ajax({
+      url: el.data('url'),
+  }).done(function(data, res) {
+      if (res == 'success') {
+          $('#textarea-content-treeview').html(data.tree);
+      }
+  });
 }
-
-function operateFormatterFiles(value, row, index) {
-    return [
-        '<a class="download-files" href="#" title="Stáhnout">',
-        '<i class="glyphicon glyphicon-download-alt"></i>',
-        '</a>'
-    ].join('');
-}
-
-window.operateEventsFiles = {
-    'click .download-files': function (e, value, row, index) {
-        console.log('download-files');
-    }
-};
 
 
 // ---------------------------------------
@@ -498,7 +557,9 @@ function getScript(url, callback) {
 function dateFormatter(value, row, index) {
     if (value===undefined) return '';
     var date = new Date(value);
-    return date.getDate() + '.' + date.getMonth() + '.' + date.getFullYear() + ' ' + date.getHours() + ':' + date.getMinutes();
+    var dh = date.getHours();
+    var dm = date.getMinutes();
+    return date.getDate() + '.' + (date.getMonth()+1) + '.' + date.getFullYear() + ' ' + (dh<10?'0':'') + dh + ':' + (dm<10?'0':'') + dm;
 }
 
 function boolFormatter(value, row, index) {
@@ -542,7 +603,8 @@ function post(path, params, method) {
 $(function () {
     var scripts = [
             location.search.substring(1) || 'assets/bootstrap-table/src/bootstrap-table.js',
-            'assets/bootstrap-table/src/extensions/export/bootstrap-table-export.js'
+            'assets/bootstrap-table/src/extensions/export/bootstrap-table-export.js',
+            'assets/bootstrap-treeview/src/js/bootstrap-treeview.js'
         ];
 
     var eachSeries = function (arr, iterator, callback) {

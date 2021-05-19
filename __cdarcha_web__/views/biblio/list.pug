@@ -28,8 +28,9 @@ block content
           table#table-content-media(data-url="/cdarcha/content/media/dataset", data-pagination="true", data-show-refresh="true", data-show-columns="true", data-minimum-count-columns="2", data-side-pagination="server", data-id-field="_id", data-page-list="[10, 25, 50, 100, ALL]", data-show-footer="false")
           p &nbsp;
           p &nbsp;
-          h4 Další připojené soubory
-          table#table-content-files(data-url="/cdarcha/content/files/dataset", data-pagination="true", data-show-refresh="true", data-show-columns="true", data-minimum-count-columns="2", data-side-pagination="server", data-id-field="_id", data-page-list="[10, 25, 50, 100, ALL]", data-show-footer="false")
+          h4 Obsah archivu
+          div#table-content-treeview(data-url="/cdarcha/content/files/dataset")
+          textarea#textarea-content-treeview.w-100.form-control(style="height:800px;", disabled="disabled")
 
   #edit-archive-modal.modal(tabindex="-1", role="dialog")
     .modal-dialog(role="document")
@@ -43,5 +44,13 @@ block content
         .modal-footer
           button.btn.btn-primary.save-archive(type="button") Uložit
           button.btn.btn-secondary(type="button", data-dismiss="modal") Zavřít
+
+  #archive-pluged.toast
+    .toast-header CDArcha akce
+    .toast-body Archiv byl připojen do Vašeho adresáře.
+
+  #archive-unpluged.toast
+    .toast-header CDArcha akce
+    .toast-body Všechny archivy byly odpojeny z Vašeho adresáře.
 
   script(src='/cdarcha/js/datatables.js')

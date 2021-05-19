@@ -4,6 +4,12 @@ $(function () {
           'assets/bootstrap-table/src/extensions/export/bootstrap-table-export.js'
       ];
 
+  var hash = window.location.hash;
+  if (hash.length) {
+    hash = hash.substring(1, hash.length);
+    $('#toolbar-tab2 .search input').val(hash);
+  }
+
   var eachSeries = function (arr, iterator, callback) {
           callback = callback || function () {};
           if (!arr.length) {
@@ -50,6 +56,14 @@ $(function () {
 
   $('#btn-filter4').click(function(){
       filterStatus('s4');
+  });
+
+  $('#btn-filter5').click(function(){
+      filterStatus('s5');
+  });
+
+  $('#btn-filter6').click(function(){
+      filterStatus('s6');
   });
 
   $('#btn-filternone').click(function(){

@@ -10,7 +10,7 @@ const chalk = require('chalk');
 const errorHandler = require('errorhandler');
 const lusca = require('lusca');
 const dotenv = require('dotenv');
-const MongoStore = require('connect-mongo')(session);
+const MongoStore = require('connect-mongo');
 const flash = require('express-flash');
 const path = require('path');
 const mongoose = require('mongoose');
@@ -84,7 +84,7 @@ app.use(session({
   saveUninitialized: true,
   secret: process.env.SESSION_SECRET,
   cookie: { maxAge: 1209600000 }, // two weeks in milliseconds
-  store: new MongoStore({
+  store: new MongoStore.create({
     url: process.env.MONGODB_URI,
     autoReconnect: true,
   })
@@ -147,6 +147,7 @@ app.get('/cdarcha/userslist/dataset', userController.getUsersListDataset);
 app.get('/cdarcha/userslist/edit/:id', userController.getEdit);
 app.post('/cdarcha/userslist/edit/:id', userController.postEdit);
 app.get('/cdarcha/userslist/remove/:id', userController.removeUser);
+app.get('/cdarcha/home/dataset', homeController.getListDataset);
 
 /**
  * Biblio

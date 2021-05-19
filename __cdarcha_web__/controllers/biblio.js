@@ -26,6 +26,7 @@ exports.getListDataset = (req, res) => {
     var searchPhrase = req.query.search || '';
     searchQuery = {
       $or: [
+        { '_id': searchPhrase },
         { 'title': new RegExp(searchPhrase, "i") },
         { 'authors': new RegExp(searchPhrase, "i") },
         { 'ean13': new RegExp(searchPhrase, "i") },

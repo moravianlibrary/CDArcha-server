@@ -10,7 +10,7 @@ block content
     #tab-container
       #tab2
         .col-lg-12
-          #toolbar-tab1.archive-toolbar
+          #toolbar-tab2.archive-toolbar
             i.fas.fa-filter
             | Filtrovat: &nbsp;
             a#btn-filter0.btn.btn-default.bg-red
@@ -23,20 +23,25 @@ block content
               | Připravené na archivaci
             a#btn-filter4.btn.btn-default
               | Archivované
+            a#btn-filter5.btn.btn-default
+              | Timeout analýzy média (DROID)
+            a#btn-filter6.btn.btn-default
+              | Jiný problém s analýzou média (DROID)
             a#btn-filternone.btn.btn-default
               | Vše
           table#table-archive(data-url="/cdarcha/archivelist/dataset", data-search="true", data-pagination="true", data-show-refresh="true", data-show-columns="true", data-minimum-count-columns="2", data-side-pagination="server", data-id-field="_id", data-page-list="[10, 25, 50, 100, ALL]", data-show-footer="false")
       #tab3
         .col-lg-12
           #toolbar-tab2
-            a#btn-back2.btn.btn-default(href="/cdarcha/bibliolist")
+            a#btn-back2.btn.btn-default(href="/cdarcha/archivelist")
               i.fas.fa-arrow-left
               | Návrat
           table#table-content-media(data-url="/cdarcha/content/media/dataset", data-pagination="true", data-show-refresh="true", data-show-columns="true", data-minimum-count-columns="2", data-side-pagination="server", data-id-field="_id", data-page-list="[10, 25, 50, 100, ALL]", data-show-footer="false")
           p &nbsp;
           p &nbsp;
-          h4 Další připojené soubory
-          table#table-content-files(data-url="/cdarcha/content/files/dataset", data-pagination="true", data-show-refresh="true", data-show-columns="true", data-minimum-count-columns="2", data-side-pagination="server", data-id-field="_id", data-page-list="[10, 25, 50, 100, ALL]", data-show-footer="false")
+          h4 Obsah archivu
+          div#table-content-treeview(data-url="/cdarcha/content/files/dataset")
+          textarea#textarea-content-treeview.w-100.form-control(style="height:800px;", disabled="disabled")
 
   #edit-archive-modal.modal(tabindex="-1", role="dialog")
     .modal-dialog(role="document")
@@ -50,6 +55,14 @@ block content
         .modal-footer
           button.btn.btn-primary.save-archive(type="button") Uložit
           button.btn.btn-secondary(type="button", data-dismiss="modal") Zavřít
+
+  #archive-pluged.toast
+    .toast-header CDArcha akce
+    .toast-body Archiv byl připojen do Vašeho adresáře.
+
+  #archive-unpluged.toast
+    .toast-header CDArcha akce
+    .toast-body Všechny archivy byly odpojeny z Vašeho adresáře.
 
   script(src='/cdarcha/js/datatables.js')
   script(src='/cdarcha/js/archivelist.js')

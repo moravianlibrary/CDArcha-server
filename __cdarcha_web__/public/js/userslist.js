@@ -25,12 +25,6 @@ function initTable() {
                 align: 'center',
                 sortable: true
             }, {
-                field: 'institution',
-                title: 'Instituce',
-                align: 'center',
-                sortable: true,
-                visible: false
-            }, {
                 field: 'roleType',
                 title: 'Role',
                 align: 'center',

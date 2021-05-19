@@ -2,8 +2,10 @@ const { promisify } = require('util');
 const Archive = require('../models/Archive');
 const Media = require('../models/Media');
 const Files = require('../models/Files');
+const Biblio = require('../models/Biblio');
 const path = require('path');
 const rimraf = require('rimraf');
+const fs = require('fs');
 
 /**
  * GET /archivelist
@@ -36,12 +38,20 @@ exports.getListDataset = (req, res) => {
     }
 
     if (searchPhrase!='') {
-      searchQuery = {
-        $or: [
-          { '_id': searchPhrase },
-          { 'biblio': searchPhrase }
-        ]
-      };
+      if (searchPhrase.length == 24) {
+        searchQuery = {
+          $or: [
+            { '_id': searchPhrase },
+            { 'biblio': searchPhrase }
+          ]
+        };
+      } else {
+        searchQuery = {
+          $or: [
+            { 'uuid': new RegExp(searchPhrase) }
+          ]
+        };
+      }
     }
 
     if (searchStatus) {
@@ -64,11 +74,20 @@ exports.getListDataset = (req, res) => {
     if (err) { res.json({ total: 0, rows: [], errmsg: err.errmsg} ); return; }
     Archive.count(searchQuery).exec((err, count) => {
       if (err) { res.json({ total: 0, rows: [], errmsg: err.errmsg} ); return; }
-      var out = {
-        total: count,
-        rows: archive
-      }
-      res.json(out);
+
+      (async function() {
+        for (var i=0; i<archive.length; i++) {
+          var archItem = archive[i];
+          const resBib = await Biblio.findById(archItem.biblio).exec();
+          archItem['_doc']['uuidTitle'] = '<strong>' + archItem.uuid + '</strong><br/><span style="font-size:small;"><i>' + resBib.authors + '</i><br/><u>' + resBib.title + '</u><br/>' + (resBib.ean13?'ISBN: '+resBib.ean13:'') + ' ' + (resBib.nbn?'ČNB: '+resBib.nbn:'') + '</span>';
+        };
+
+        var out = {
+          total: count,
+          rows: archive
+        }
+        res.json(out);
+      })();
     });
   });
 };
@@ -176,4 +195,37 @@ exports.delArchive = (req, res) => {
       res.json({ 'message': 'ok' });
     });*/
   });
+};
+
+
+/**
+ * GET /cdarcha/archive/mount
+ * Mount archive with UUID specified
+ */
+exports.mountArchive = (req, res) => {
+  if (req.user && req.query.uuid) {
+    const shareDir = '/mnt/cdarcha/share/'+req.user._doc.shareDir;
+    const uuid = req.query.uuid;
+    fs.symlink('/mnt/cdarcha/'+uuid, shareDir+'/'+uuid, function(){});
+  }
+  res.json({'message': 'ok' });
+};
+
+
+/**
+ * GET /cdarcha/archive/unmount
+ * Mount archive with UUID specified
+ */
+exports.unmountArchive = (req, res) => {
+  if (req.user) {
+    const shareDir = '/mnt/cdarcha/share/'+req.user._doc.shareDir+'/*';
+    rimraf(shareDir, function(err){
+        if (err) {
+          console.dir(err);
+          res.status(404).send('{\'message\': \'' + err.code + '\' }');
+          return;
+        }
+    });
+  }
+  res.json({'message': 'ok' });
 };

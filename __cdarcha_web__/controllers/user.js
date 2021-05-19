@@ -93,7 +93,6 @@ exports.postSignup = (req, res, next) => {
   const user = new User({
     email: req.body.email,
     sigla: req.body.sigla,
-    institution: req.body.institution,
     roleType: req.body.roleType
   });
 
@@ -106,11 +105,8 @@ exports.postSignup = (req, res, next) => {
     user.save((err) => {
       if (err) { return next(err); }
       const transporter = nodemailer.createTransport({
-        service: 'SendGrid',
-        auth: {
-          user: process.env.SENDGRID_USER,
-          pass: process.env.SENDGRID_PASSWORD
-        }
+        port: '25',
+        host: 'mail.mzk.cz'
       });
       const mailOptions = {
         to: user.email,
@@ -156,7 +152,6 @@ exports.postUpdateProfile = (req, res, next) => {
     if (err) { return next(err); }
     user.email = req.body.email || '';
     user.sigla = req.body.sigla || '';
-    user.institution = req.body.institution || '';
     user.save((err) => {
       if (err) {
         if (err.code === 11000) {
@@ -289,11 +284,8 @@ exports.postReset = (req, res, next) => {
   const sendResetPasswordEmail = (user) => {
     if (!user) { return; }
     const transporter = nodemailer.createTransport({
-      service: 'SendGrid',
-      auth: {
-        user: process.env.SENDGRID_USER,
-        pass: process.env.SENDGRID_PASSWORD
-      }
+      port: '25',
+      host: 'mail.mzk.cz'
     });
     const mailOptions = {
       to: user.email,
@@ -362,11 +354,8 @@ exports.postForgot = (req, res, next) => {
     if (!user) { return; }
     const token = user.passwordResetToken;
     const transporter = nodemailer.createTransport({
-      service: 'SendGrid',
-      auth: {
-        user: process.env.SENDGRID_USER,
-        pass: process.env.SENDGRID_PASSWORD
-      }
+      port: '25',
+      host: 'mail.mzk.cz'
     });
     const mailOptions = {
       to: user.email,
@@ -413,8 +402,7 @@ exports.getUsersListDataset = (req, res) => {
     searchQuery = {
       $or: [
         { 'email': new RegExp(searchPhrase, "i") },
-        { 'sigla': new RegExp(searchPhrase, "i") },
-        { 'institution': new RegExp(searchPhrase, "i") }
+        { 'sigla': new RegExp(searchPhrase, "i") }
       ]
     };
   }
@@ -484,7 +472,6 @@ exports.postEdit = (req, res, next) => {
     if (err) { return next(err); }
     user.email = req.body.email || '';
     user.sigla = req.body.sigla || '';
-    user.institution = req.body.institution || '';
     user.roleType = req.body.roleType || '';
     user.save((err) => {
       if (err) {

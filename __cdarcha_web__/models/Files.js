@@ -6,7 +6,8 @@ const filesSchema = new mongoose.Schema({
       ref: 'Archive'
   },
   fileType: String,
-	checkSum: String,
+  fileName: String,
+  checkSum: String,
   fileSize: Number,
 
   dtCreated: Date,
