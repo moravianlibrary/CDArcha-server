@@ -183,49 +183,10 @@ app.get('/cdarcha/cronlog/dataset', cronlogController.getDataset);
  */
 app.get('/cdarcha/api', apiController.getApi);
 app.get('/cdarcha/api/github', passportConfig.isAuthenticated, passportConfig.isAuthorized, apiController.getGithub);
-/*
-app.get('/cdarcha/api/lastfm', apiController.getLastfm);
-app.get('/cdarcha/api/nyt', apiController.getNewYorkTimes);
-app.get('/cdarcha/api/aviary', apiController.getAviary);
-app.get('/cdarcha/api/steam', passportConfig.isAuthenticated, passportConfig.isAuthorized, apiController.getSteam);
-app.get('/cdarcha/api/stripe', apiController.getStripe);
-app.post('/cdarcha/api/stripe', apiController.postStripe);
-app.get('/cdarcha/api/scraping', apiController.getScraping);
-app.get('/cdarcha/api/twilio', apiController.getTwilio);
-app.post('/cdarcha/api/twilio', apiController.postTwilio);
-app.get('/cdarcha/api/clockwork', apiController.getClockwork);
-app.post('/cdarcha/api/clockwork', apiController.postClockwork);
-app.get('/cdarcha/api/foursquare', passportConfig.isAuthenticated, passportConfig.isAuthorized, apiController.getFoursquare);
-app.get('/cdarcha/api/tumblr', passportConfig.isAuthenticated, passportConfig.isAuthorized, apiController.getTumblr);
-app.get('/cdarcha/api/facebook', passportConfig.isAuthenticated, passportConfig.isAuthorized, apiController.getFacebook);
-app.get('/cdarcha/api/twitter', passportConfig.isAuthenticated, passportConfig.isAuthorized, apiController.getTwitter);
-app.post('/cdarcha/api/twitter', passportConfig.isAuthenticated, passportConfig.isAuthorized, apiController.postTwitter);
-app.get('/cdarcha/api/linkedin', passportConfig.isAuthenticated, passportConfig.isAuthorized, apiController.getLinkedin);
-app.get('/cdarcha/api/instagram', passportConfig.isAuthenticated, passportConfig.isAuthorized, apiController.getInstagram);
-app.get('/cdarcha/api/paypal', apiController.getPayPal);
-app.get('/cdarcha/api/paypal/success', apiController.getPayPalSuccess);
-app.get('/cdarcha/api/paypal/cancel', apiController.getPayPalCancel);
-app.get('/cdarcha/api/lob', apiController.getLob);
-app.get('/cdarcha/api/upload', apiController.getFileUpload);
-app.post('/cdarcha/api/upload', upload.single('myFile'), apiController.postFileUpload);
-app.get('/cdarcha/api/pinterest', passportConfig.isAuthenticated, passportConfig.isAuthorized, apiController.getPinterest);
-app.post('/cdarcha/api/pinterest', passportConfig.isAuthenticated, passportConfig.isAuthorized, apiController.postPinterest);
-app.get('/cdarcha/api/google-maps', apiController.getGoogleMaps);
-*/
 
 /**
  * OAuth authentication routes. (Sign in)
  */
-/*
-app.get('/cdarcha/auth/instagram', passport.authenticate('instagram'));
-app.get('/cdarcha/auth/instagram/callback', passport.authenticate('instagram', { failureRedirect: '/cdarcha/login' }), (req, res) => {
-  res.redirect(req.session.returnTo || '/');
-});
-app.get('/cdarcha/auth/facebook', passport.authenticate('facebook', { scope: ['email', 'public_profile'] }));
-app.get('/cdarcha/auth/facebook/callback', passport.authenticate('facebook', { failureRedirect: '/cdarcha/login' }), (req, res) => {
-  res.redirect(req.session.returnTo || '/');
-});
-*/
 app.get('/cdarcha/auth/github', passport.authenticate('github'));
 app.get('/cdarcha/auth/github/callback', passport.authenticate('github', { failureRedirect: '/cdarcha/login' }), (req, res) => {
   res.redirect(req.session.returnTo || '/');
@@ -234,38 +195,6 @@ app.get('/cdarcha/auth/google', passport.authenticate('google', { scope: 'profil
 app.get('/cdarcha/auth/google/callback', passport.authenticate('google', { failureRedirect: '/cdarcha/login' }), (req, res) => {
   res.redirect(req.session.returnTo || '/');
 });
-/*
-app.get('/cdarcha/auth/twitter', passport.authenticate('twitter'));
-app.get('/cdarcha/auth/twitter/callback', passport.authenticate('twitter', { failureRedirect: '/cdarcha/login' }), (req, res) => {
-  res.redirect(req.session.returnTo || '/');
-});
-app.get('/cdarcha/auth/linkedin', passport.authenticate('linkedin', { state: 'SOME STATE' }));
-app.get('/cdarcha/auth/linkedin/callback', passport.authenticate('linkedin', { failureRedirect: '/cdarcha/login' }), (req, res) => {
-  res.redirect(req.session.returnTo || '/');
-});
-*/
-
-/**
- * OAuth authorization routes. (API examples)
- */
-/*
-app.get('/cdarcha/auth/foursquare', passport.authorize('foursquare'));
-app.get('/cdarcha/auth/foursquare/callback', passport.authorize('foursquare', { failureRedirect: '/cdarcha/api' }), (req, res) => {
-  res.redirect('/cdarcha/api/foursquare');
-});
-app.get('/cdarcha/auth/tumblr', passport.authorize('tumblr'));
-app.get('/cdarcha/auth/tumblr/callback', passport.authorize('tumblr', { failureRedirect: '/cdarcha/api' }), (req, res) => {
-  res.redirect('/cdarcha/api/tumblr');
-});
-app.get('/cdarcha/auth/steam', passport.authorize('openid', { state: 'SOME STATE' }));
-app.get('/cdarcha/auth/steam/callback', passport.authorize('openid', { failureRedirect: '/cdarcha/api' }), (req, res) => {
-  res.redirect(req.session.returnTo);
-});
-app.get('/cdarcha/auth/pinterest', passport.authorize('pinterest', { scope: 'read_public write_public' }));
-app.get('/cdarcha/auth/pinterest/callback', passport.authorize('pinterest', { failureRedirect: '/cdarcha/login' }), (req, res) => {
-  res.redirect('/cdarcha/api/pinterest');
-});
-*/
 
 /**
  * Error Handler.
