@@ -1,0 +1,13 @@
+extends ../layout
+
+block content
+  .row
+    .col-lg-12
+      .pb-2.mt-2.mb-4
+        h3 Log
+
+  .row
+    .col-lg-12
+      table#table(data-url="/cdarcha/cronlog/dataset", data-pagination="true", data-search="true", data-show-refresh="true", data-show-columns="true", data-minimum-count-columns="2", data-side-pagination="server", data-id-field="_id", data-page-list="[10, 25, 50, 100, ALL]", data-show-footer="false")
+
+  script(src='/cdarcha/js/cronlog.js')
