@@ -1,32 +1,24 @@
-/// version 1
-
-/// mongodb://url:port/database  - spojeni na mongodb
-var urlmongo = "mongodb://127.0.0.1:27017"
-/// timeout dotazu na backend (ms)
-var timeout = 15 * 1000;
-
-/// port frontendu HTTP / HTTPS
-var frontPortHttp = 1337;
-var frontPortHttps = 1338;
-
-// =========================================
-
 /// CD Archa server v1
-var okcz = require('cdarcha-server');
+const cdarcha = require('cdarcha_server');
 
 /// node.js moduly
-var mongo = require('mongodb');
-var client = mongo.MongoClient;
-var request = require('request');
-var http = require('http');
-var https = require('https');
-var fs = require('fs');
+const request = require('request');
+const http = require('http');
+const https = require('https');
+const fs = require('fs');
+const dotenv = require('dotenv');
+
+// nacteni konfigurace
+dotenv.config({ path: '.env' });
+
+const MongoClient = require('mongodb').MongoClient;
+const client = new MongoClient(process.env.MONGODB_URI, { useUnifiedTopology: true });
 
 /// soukromy klic, certifikat a intermediate certifikat; vse pro HTTPS
-var httpsOptions = {
-  key: fs.readFileSync('cert/private/cdarchakey.pem'),
-  cert: fs.readFileSync('cert/cdarcha.pem'),
-  ca: [ fs.readFileSync('cert/chain_TERENA_SSL_CA_3.pem') ]
+const httpsOptions = {
+  key: fs.readFileSync(process.env.HTTPS_PRIV_FILE),
+  cert: fs.readFileSync(process.env.HTTPS_CERT_FILE),
+  ca: [ fs.readFileSync(process.env.HTTPS_CA_FILE) ]
 };
 
 // **********************************************
@@ -37,23 +29,23 @@ var httpsOptions = {
 // * Vytvoreni HTTP a HTTPS serveru
 // **********************************************
 
-client.connect(urlmongo, function (err, client) {
+client.connect().then((client, err) => {
   if (err) {  return console.dir(err); }
-  var db = client.db('cdarcha_db');
+  const db = client.db();
   console.log('mongodb connected...');
 
-  var arg1 = process.argv.slice(2);
+  const arg1 = process.argv.slice(2);
   var test = false;
   if (arg1=='-t' || arg1=='--test') test = true; // priznak testovaciho prostredi
 
   // HTTP
   http.createServer(function (req, response) {
-    okcz.server(req, response, db);
-  }).listen(frontPortHttp);
+    cdarcha.server(req, response, db);
+  }).listen(process.env.HTTP_BACK_PORT);
 
   // HTTPS
   https.createServer(httpsOptions, function (req, response) {
-    okcz.server(req, response, db);
-  }).listen(frontPortHttps);
+    cdarcha.server(req, response, db);
+  }).listen(process.env.HTTPS_BACK_PORT);
 
 });

@@ -38,9 +38,11 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
 };
 exports.__esModule = true;
 var apiVersion = "1.0";
+// nacteni konfigurace
+var dotenv = require('dotenv');
+dotenv.config({ path: '.env' });
 // url na backend
-//const urlMain: string = "192.168.1.11" //local
-var urlMain = "cdarcha.mzk.cz"; //server
+var urlMain = process.env.BASE_DOMAIN;
 var urlPart = "/";
 var apiImport = "api/import";
 var urlUpload = "file/upload";
@@ -60,20 +62,17 @@ var archiveCollection = "archive";
 var mediaCollection = "media";
 var filesCollection = "files";
 var usersCollection = "users";
-// timeout dotazu na backend (ms)
-var timeout = 20 * 1000;
-// doba, po ktere se opet zkusime doptat backendu po timeoutu (ms)
-var timeOutDuration = 1 * 1000;
 // temporary files
-var tmpFolder = "/home/cdarcha/cdarcha/tmp";
-var storageFolder = "/mnt/cdarcha";
+//const tmpFolder: string = "/home/cdarcha/cdarcha/tmp";
+var tmpFolder = process.env.TMP_DIR;
+var storageFolder = process.env.STORAGE_DIR;
 // =========================================
 var request = require('request');
 var toEan = require('./to-ean').toEan;
 var partParser = require('./book-part-parser');
 var URL_lib = require('url');
 var fs = require('fs');
-var md5 = require('MD5');
+var md5 = require('md5');
 var http = require('http');
 var mongo = require('mongodb');
 var crypto = require('crypto');
@@ -140,7 +139,7 @@ var Server = /** @class */ (function () {
          **/
         if (this.requrl == '/') {
             this.response.writeHead(301, {
-                'Location': 'https://cdarcha.mzk.cz/cdarcha/'
+                'Location': process.env.BASE_URL
             });
             this.response.end();
         }
@@ -193,12 +192,12 @@ var Server = /** @class */ (function () {
         else if (this.requrl.indexOf(urlWeb) > 0) {
             if (!this.req.connection.encrypted) {
                 this.response.writeHead(301, {
-                    'Location': 'https://cdarcha.mzk.cz/' + this.requrl
+                    'Location': process.env.BASE_URL + '/' + this.requrl
                 });
                 this.response.end();
             }
             proxy.web(this.req, this.response, {
-                target: 'http://localhost:8080/'
+                target: process.env.BASE_URL_INTERNAL + '/'
             });
         }
         /**
@@ -1341,7 +1340,7 @@ var Server = /** @class */ (function () {
         0xFF, 0xFF, 0xFF, 0x21, 0xF9, 0x04, 0x01, 0x0A, 0x00, 0x01, 0x00, 0x2c, 0x00, 0x00, 0x00, 0x00,
         0x01, 0x00, 0x01, 0x00, 0x00, 0x02, 0x02, 0x4C, 0x01, 0x00, 0x3B
     ];
-    Server.placeholder = new Buffer(Server.placeholderData);
+    Server.placeholder = Buffer.from(Server.placeholderData);
     return Server;
 }());
 module.exports = {

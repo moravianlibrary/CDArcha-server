@@ -2,9 +2,12 @@
 
 const apiVersion: string = "1.0";
 
+// nacteni konfigurace
+const dotenv = require('dotenv');
+dotenv.config({ path: '.env' });
+
 // url na backend
-//const urlMain: string = "192.168.1.11" //local
-const urlMain: string = "cdarcha.mzk.cz" //server
+const urlMain: string = process.env.BASE_DOMAIN
 
 const urlPart: string = "/"
 const apiImport: string = "api/import"
@@ -25,13 +28,10 @@ const archiveCollection: string = "archive"
 const mediaCollection: string = "media"
 const filesCollection: string = "files"
 const usersCollection: string = "users"
-// timeout dotazu na backend (ms)
-const timeout: number = 20 * 1000;
-// doba, po ktere se opet zkusime doptat backendu po timeoutu (ms)
-const timeOutDuration: number = 1 * 1000;
 // temporary files
-const tmpFolder: string = "/home/cdarcha/cdarcha/tmp";
-const storageFolder: string = "/mnt/cdarcha";
+//const tmpFolder: string = "/home/cdarcha/cdarcha/tmp";
+const tmpFolder: string = process.env.TMP_DIR;
+const storageFolder: string = process.env.STORAGE_DIR;
 
 // =========================================
 
@@ -40,7 +40,7 @@ const toEan = require('./to-ean').toEan;
 const partParser = require('./book-part-parser');
 const URL_lib = require('url');
 const fs = require('fs');
-const md5 = require('MD5');
+const md5 = require('md5');
 const http = require('http');
 const mongo = require('mongodb');
 const crypto = require('crypto');
@@ -130,7 +130,7 @@ class Server {
         0xFF, 0xFF, 0xFF, 0x21, 0xF9, 0x04, 0x01, 0x0A, 0x00, 0x01, 0x00, 0x2c, 0x00, 0x00, 0x00, 0x00,
         0x01, 0x00, 0x01, 0x00, 0x00, 0x02, 0x02, 0x4C, 0x01, 0x00, 0x3B
     ];
-    static placeholder: any = new Buffer(Server.placeholderData);
+    static placeholder: any = Buffer.from(Server.placeholderData);
 
     constructor(req: any, response: any, db: any) {
         this.requrl = req.url;
@@ -165,7 +165,7 @@ class Server {
          **/
         if (this.requrl == '/') {
           this.response.writeHead(301, {
-            'Location': 'https://cdarcha.mzk.cz/cdarcha/'
+            'Location': process.env.BASE_URL
           });
           this.response.end();
         }
@@ -231,12 +231,12 @@ class Server {
         else if (this.requrl.indexOf(urlWeb) > 0) {
           if (!this.req.connection.encrypted) {
             this.response.writeHead(301, {
-              'Location': 'https://cdarcha.mzk.cz/' + this.requrl
+              'Location': process.env.BASE_URL + '/' + this.requrl
             });
             this.response.end();
           }
           proxy.web(this.req, this.response, {
-            target: 'http://localhost:8080/'
+            target: process.env.BASE_URL_INTERNAL + '/'
           });
         }
 
