@@ -1,5 +1,6 @@
-// ====================== CONFIG.TS ===================
+// @ts-ignore
 
+// ====================== CONFIG.TS ===================
 const apiVersion: string = "1.0";
 
 // nacteni konfigurace

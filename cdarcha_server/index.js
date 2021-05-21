@@ -1,5 +1,5 @@
 "use strict";
-// ====================== CONFIG.TS ===================
+// @ts-ignore
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
@@ -37,6 +37,7 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 exports.__esModule = true;
+// ====================== CONFIG.TS ===================
 var apiVersion = "1.0";
 // nacteni konfigurace
 var dotenv = require('dotenv');

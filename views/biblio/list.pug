@@ -1,0 +1,56 @@
+extends ../layout
+
+block content
+  .row
+    .col-lg-12
+      .pb-2.mt-2.mb-4
+        h3 Bibliografické záznamy
+        h4#subtitle &nbsp;
+
+  #tab-overflow
+    #tab-container
+      #tab1
+        .col-lg-12
+          table#table-biblio(data-url="/cdarcha/bibliolist/dataset", data-pagination="true", data-search="true", data-show-refresh="true", data-show-columns="true", data-minimum-count-columns="2", data-side-pagination="server", data-id-field="_id", data-page-list="[10, 25, 50, 100, ALL]", data-show-footer="false")
+      #tab2
+        .col-lg-12
+          #toolbar-tab2
+            a#btn-back1.btn.btn-default(href="/cdarcha/bibliolist")
+              i.fas.fa-arrow-left
+              | Návrat
+          table#table-archive(data-url="/cdarcha/archivelist/dataset", data-pagination="true", data-show-refresh="true", data-show-columns="true", data-minimum-count-columns="2", data-side-pagination="server", data-id-field="_id", data-page-list="[10, 25, 50, 100, ALL]", data-show-footer="false")
+      #tab3
+        .col-lg-12
+          #toolbar-tab2
+            a#btn-back2.btn.btn-default(href="/cdarcha/bibliolist")
+              i.fas.fa-arrow-left
+              | Návrat
+          table#table-content-media(data-url="/cdarcha/content/media/dataset", data-pagination="true", data-show-refresh="true", data-show-columns="true", data-minimum-count-columns="2", data-side-pagination="server", data-id-field="_id", data-page-list="[10, 25, 50, 100, ALL]", data-show-footer="false")
+          p &nbsp;
+          p &nbsp;
+          h4 Obsah archivu
+          div#table-content-treeview(data-url="/cdarcha/content/files/dataset")
+          textarea#textarea-content-treeview.w-100.form-control(style="height:800px;", disabled="disabled")
+
+  #edit-archive-modal.modal(tabindex="-1", role="dialog")
+    .modal-dialog(role="document")
+      .modal-content
+        .modal-header
+          h5.modal-title Editace archivu
+          button.close(type="button", data-dismiss="modal", aria-label="Zavřít")
+            span(aria-hidden="true") &times;
+        .modal-body
+          p Modal body text goes here.
+        .modal-footer
+          button.btn.btn-primary.save-archive(type="button") Uložit
+          button.btn.btn-secondary(type="button", data-dismiss="modal") Zavřít
+
+  #archive-pluged.toast
+    .toast-header CDArcha akce
+    .toast-body Archiv byl připojen do Vašeho adresáře.
+
+  #archive-unpluged.toast
+    .toast-header CDArcha akce
+    .toast-body Všechny archivy byly odpojeny z Vašeho adresáře.
+
+  script(src='/cdarcha/js/datatables.js')

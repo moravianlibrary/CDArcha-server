@@ -1,27 +1,28 @@
 /// version 1
 
-/// mongodb://url:port/database  - spojeni na mongodb
-const urlmongo = 'mongodb://localhost:27017';
-const mongodb = 'cdarcha_db';
+const dotenv = require('dotenv');
+dotenv.config({ path: '.env' });
+
 const archiveCollection = 'archive';
 const mediaCollection = 'media';
 const userCollection = 'users';
 const filesCollection = 'files';
 const logCollection = 'logcron';
-const storageFolder = '/mnt/cdarcha';
-const abbyyDir = '/home/cdarcha/abby/';
+const storageFolder = process.env.STORAGE_DIR;
+const abbyyDir = process.env.ABBY_DIR;
 
 // =========================================
 
-const mongo = require('mongodb');
-const client = mongo.MongoClient;
-const request = require('request');
-const fs = require('fs');
 const crypto = require('crypto');
 const execSync = require('child_process').execSync;
+const request = require('request');
+const fs = require('fs');
 const md5 = require('md5-file');
 const getFolderSize = require('get-folder-size');
-var lockFile = require('lockfile');
+const lockFile = require('lockfile');
+
+const MongoClient = require('mongodb').MongoClient;
+const client = new MongoClient(process.env.MONGODB_URI, { useUnifiedTopology: true });
 
 
 function _log(db, archiveId, msg) {
@@ -36,9 +37,9 @@ if (!isLocked) {
 
 // proces muze spustit
 // pripojime DB a najdeme zaznamy ke zpracovani
-client.connect(urlmongo, { useNewUrlParser: true }, function (err, client) {
+client.connect().then((client, err) => {
   if (err) { console.dir(err); return; }
-  var db = client.db(mongodb);
+  var db = client.db();
 
   (async function() {
 
@@ -634,9 +635,9 @@ client.connect(urlmongo, { useNewUrlParser: true }, function (err, client) {
           execSync('./bin/droid-6.4/droid.sh -a ' + archiveDataDir+'isoimage -p ' + archiveDataDir+'droid.profile', { 'timeout': 1800000, 'killSignal': 'SIGKILL' });
           execSync('./bin/droid-6.4/droid.sh -p ' + archiveDataDir+'droid.profile -n "Comprehensive breakdown" -t xml -r ' + archiveDataDir+'droid_'+archiveUuid+'.xml', { 'timeout': 1800000, 'killSignal': 'SIGKILL' });
           // protoze DROID obsahuje bug; nekopiruje report tam kam chceme, musime si report najit a skopirovat sami
-          fs.readdirSync('/home/cdarcha/.droid6/tmp').forEach(file => {
-            fs.copyFileSync('/home/cdarcha/.droid6/tmp/'+file, archiveDataDir+'droid_'+archiveUuid+'.xml');
-            fs.unlinkSync('/home/cdarcha/.droid6/tmp/'+file);
+          fs.readdirSync(process.env.DROID_TMP_DIR).forEach(file => {
+            fs.copyFileSync(process.env.DROID_TMP_DIR + file, archiveDataDir+'droid_'+archiveUuid+'.xml');
+            fs.unlinkSync(process.env.DROID_TMP_DIR + file);
           });
           fs.unlinkSync(archiveDataDir + 'droid.profile');
           var droidChecksum = md5.sync(archiveDataDir + 'droid_' + archiveUuid + '.xml');

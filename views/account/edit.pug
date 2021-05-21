@@ -1,0 +1,26 @@
+extends ../layout
+
+block content
+  .pb-2.mt-2.mb-4.border-bottom
+    h3 Upravit účet
+  form(id='signup-form', method='POST')
+    input(type='hidden', name='_csrf', value=_csrf)
+    .form-group.row
+      label.col-md-3.col-form-label.font-weight-bold.text-right(for='email') Email
+      .col-md-7
+        input.form-control(type='email', name='email', id='email', placeholder='Email', value=data.email, autofocus, required)
+    .form-group.row
+      label.col-md-3.col-form-label.font-weight-bold.text-right(for='sigla') Sigla
+      .col-md-7
+        input.form-control(type='sigla', name='sigla', id='sigla', placeholder='Sigla', value=data.sigla, required)
+    .form-group.row
+      label.col-md-3.col-form-label.font-weight-bold.text-right(for='sigla') Role
+      .col-md-7
+        select.form-control(name='roleType', id='role', placeholder='Zvolte roli', required)
+          option(value="0", selected= data.roleType == 0) Sysadmin (může všechno i zakládat uživatele)
+          option(value="1", selected= data.roleType == 1) Kurátor (archivuje a spravuje archivy)
+          option(value="2", selected= data.roleType == 2) Archivátor (pouze archivuje)
+    .form-group.offset-sm-3.col-md-7.pl-2
+      button.btn.btn-success(type='submit')
+        i.fas.fa-user-plus.fa-sm
+        | Upravit

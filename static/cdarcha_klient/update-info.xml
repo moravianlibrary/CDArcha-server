@@ -2,19 +2,19 @@
 	<latest-version>
 		<!-- Admin version -->
 		<version type="Admin">
-			<major>0</major>
-			<minor>1</minor>
-			<date>01/20/2018</date>
-			<checksum>0e06210d4672d6e73836c9de838c398ee9e5687af65bb41591f147e3ff11c550</checksum>
-			<download>https://obalkyknih.cz/obalkyknih-scanner/obalkyknih-scanner_setup.exe</download>
+			<major>1</major>
+			<minor>4</minor>
+			<date>09/18/2020</date>
+			<checksum>188bb6d119213455dd4bb04fdd4d8c3930b3d5e552bd430958d89ed1c1d4faae</checksum>
+			<download>https://cdarcha.mzk.cz/cdarcha_klient/CDArcha_klient_setup.exe</download>
 		</version>
 		<!-- NoAdmin version -->
 		<version type="User">
-			<major>0</major>
-			<minor>1</minor>
-			<date>01/20/2018</date>
-			<checksum>138359b00884f02c8ec4c1fd27b480e2b473593edb33610a6f132ee093d4a5f5</checksum>
-			<download>https://obalkyknih.cz/obalkyknih-scanner/obalkyknih-scanner_setupNoAdmin.exe</download>
+			<major>1</major>
+			<minor>4</minor>
+			<date>09/18/2020</date>
+			<checksum>563ab0a947c5babc9cea36916bab612d3e5233d1f75e5ddab84a6e43fc40d9b4</checksum>
+			<download>https://cdarcha.mzk.cz/cdarcha_klient/CDArcha_klient_setupNoAdmin.exe</download>
 		</version>
 	</latest-version>
 	<unsupported-versions>
