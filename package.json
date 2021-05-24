@@ -1,5 +1,5 @@
 {
-  "name": "cdarcha_web",
+  "name": "cdarcha_server",
   "version": "1.18.10",
   "description": "Archivační server CDArcha",
   "repository": {
@@ -23,7 +23,7 @@
     "body-parser": "^1.19.0",
     "bootstrap": "^4.6.0",
     "bootstrap-table": "^1.18.3",
-    "cdarcha_server": "file:./cdarcha_server",
+    "cdarcha_api": "file:./cdarcha_api",
     "chalk": "^4.1.1",
     "child_process": "^1.0.2",
     "compression": "^1.7.4",

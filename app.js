@@ -1,7 +1,7 @@
 /**
  * CDArcha API
  */
-const cdarcha = require('cdarcha_server');
+const cdarcha = require('cdarcha_api');
 const dotenv = require('dotenv');
 const request = require('request');
 const http = require('http');

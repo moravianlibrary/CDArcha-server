@@ -1,7 +1,7 @@
 {
-  "name": "cdarcha_server",
+  "name": "cdarcha_api",
   "version": "1.18.10",
-  "description": "Archivační server CDArcha",
+  "description": "Archivační server CDArcha - API",
   "main": "app.js",
   "directories": {
     "doc": "doc"
