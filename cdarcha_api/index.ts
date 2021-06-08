@@ -18,6 +18,7 @@ const apiChecksum: string = "api/gethash"
 const apiGetMedia: string = "api/getmedia"
 const apiGetAllMediaList: string = "api/getallmedialist"
 const apiCloseArchive: string = "api/closearchive"
+const apiOpenArchive: string = "api/openarchive"
 const urlMetadata: string = "api/media"
 const urlWeb: string = "cdarcha"
 const urlParams: string = "?books="
@@ -999,8 +1000,10 @@ class Server {
          * API CLOSE ARCHIVE
          * Close archive record
          **/
-        else if (this.requrl.indexOf(apiCloseArchive) > 0) {
-            testLog("41", "[ API CLOSE ARCHIVE ]");
+        else if (this.requrl.indexOf(apiCloseArchive) > 0 || this.requrl.indexOf(apiOpenArchive) > 0) {
+            const op = this.requrl.indexOf(apiOpenArchive) > 0 ? 'open' : 'close';
+            const opCode = op=='close'?1:0;
+            testLog("41", "[ API " + op=='close'?'CLOSE':'OPEN' + "ARCHIVE ]");
 
             const id = this.query.id;
             if (!id) {
@@ -1025,7 +1028,7 @@ class Server {
                     }
 
                     const archiveId = archiveDoc ? id : mediaDoc.archive;
-                    s.db.collection(archiveCollection).update({ _id: new mongo.ObjectID(archiveId) }, { $set: { status: 1 } });
+                    s.db.collection(archiveCollection).update({ _id: new mongo.ObjectID(archiveId) }, { $set: { status: opCode } });
                 });
             });
         }
