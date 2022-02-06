@@ -120,22 +120,6 @@ export class Helpers {
         return asObject === true ? bibOut : JSON.stringify(bibOut);
     }
 
-    static encrypt(plain) {
-        var key: any = crypto.createHash('sha256').update(cryptoPasskey).digest('base64');
-        var cipher: any = crypto.createCipher('aes-256-cbc', key);
-        var encypted: any = cipher.update(plain, 'utf8', 'base64');
-        encypted += cipher.final('base64');
-        return encypted;
-    }
-
-    static decrypt(encrypted) {
-        var key: any = crypto.createHash('sha256').update(cryptoPasskey).digest('base64');
-        var decipher: any = crypto.createDecipher('aes-256-cbc', key);
-        var plain: any = decipher.update(encrypted, 'base64', 'utf8');
-        plain += decipher.final('utf8');
-        return plain;
-    }
-
     /**
      * Proveruje identifikatory part_*
      */
@@ -176,8 +160,8 @@ export class Helpers {
             return;
         }
 
-        var verParts: array = ver.split('.') || [];
-        var apiVerParts: array = apiVer.split('.') || [];
+        var verParts: any = ver.split('.') || [];
+        var apiVerParts: any = apiVer.split('.') || [];
         if (!verParts[0] || !apiVerParts[0] || verParts[0] != apiVerParts[0]) {
             done(403, null);
             return;

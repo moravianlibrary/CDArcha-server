@@ -59,8 +59,6 @@ import { Bibinfo, Bibdata } from "./Bibinfo";
 import { Archive, Archivedata } from "./Archive";
 import { Media, Mediadata } from "./Media";
 import { Files, Filesdata } from "./Files";
-import { Statistics } from "./Statistics";
-import { Permissions } from "./Permissions";
 import { Helpers } from "./Helpers";
 
 const statusHuman = {
@@ -121,11 +119,8 @@ class Server {
     timestamp: any;
     now: any;
     etag: any;
-    referer: any;
-    remoteIP: any;
-    encsigla: any;
 
-    sigla: any; //pridane-------------------------------------------------------------------------------------
+    sigla: any;
 
     static placeholderData: any = [
         0x47, 0x49, 0x46, 0x38, 0x39, 0x61, 0x01, 0x00, 0x01, 0x00, 0x80, 0x00, 0x00, 0xFF, 0xFF, 0xFF,
@@ -138,26 +133,14 @@ class Server {
         this.requrl = req.url;
         testLog("33", "CD ARCHA v"+apiVersion+" starting...");
         testLog("92", "Request url:" + this.requrl);
-        // console.log(req.connection.remoteAddress);
-        // console.log(requrl);
         this.query = URL_lib.parse(this.requrl, true).query;
-        // console.log('query: ' + JSON.stringify(query));
         this.date = new Date();
         this.timestamp = this.date.toISOString();
         this.now = this.date.getTime();
-        // console.log(timestamp);
-        // console.log('HEAENCRYPTD: ' + JSON.stringify(req.headers));
         this.etag = req.headers['if-none-match'] || req.headers['Etag'];
-        this.referer = req.headers['referer'];
-        this.remoteIP = req.connection.remoteAddress;
-        this.encsigla = this.query.encsigla;
-        // console.log(etags);
-        // console.log('index: ' + requrl.indexOf(urlMetadata));
         this.req = req;
         this.response = response;
         this.db = db;
-
-        this.sigla = Permissions.refererValid(this.referer, this.remoteIP, this.encsigla);
     }
 
 
@@ -173,31 +156,12 @@ class Server {
         }
 
         /**
-         * ETAG MATCH
-         **/
-        if (etags[this.etag] !== undefined) {
-
-            testLog("44", "[ETAG MATCH]");
-
-            var sigla: any = Permissions.refererValid(this.referer, this.remoteIP, this.encsigla);
-            var etagPrefix: any = this.etag.substring(0, 4);
-
-            Statistics.addEtagStatisticByEtagPrefix(etagPrefix, sigla);
-
-            this.response.statusCode = 304;
-            this.response.end();
-        }
-
-        /**
          * STATICKE SOUBORY
          **/
         // http://cdarcha.mzk.cz/favicon.ico
         else if (this.requrl === '/favicon.ico' || this.requrl === '/cdarcha_klient/update-info.xml' || this.requrl === '/cdarcha_klient/CDArcha_klient_setup.exe' || this.requrl === '/cdarcha_klient/CDArcha_klient_setupNoAdmin.exe')
         {
-            testLog("41", "[STATICKE SUBORY] Sigla:" + sigla);
-
-            Statistics.addFileRequests(sigla);
-            testLog("41", "-> fileRequests[sigla]:" + Statistics.fileRequests[sigla]);
+            testLog("41", '[STATICKE SUBORY] ' + this.requrl);
 
             if (this.requrl.substring(this.requrl.length - 4) === '.ico')
                 this.response.writeHead(200, { 'Etag': 'file-' + md5(this.requrl), 'Content-Type': 'image/x-icon' });
@@ -259,7 +223,7 @@ class Server {
                       return;
                     }
 
-                    var body: string = '';
+                    var body: any = '';
                     s.req.on('data', function(chunk) {
                         body += chunk;
                     });
@@ -267,7 +231,6 @@ class Server {
                         testLog("41", "[ CHUNK FINISHED ]");
                         body = new Buffer(body,'utf-8');
                         var res: number = 0;
-                        console.log(body);
                         var parts = multipart.Parse(body, boundary);
 
                         var bibinfo = <Bibdata>{};
@@ -515,7 +478,7 @@ class Server {
                     console.log(checksum);
                     console.log('%%%%%%%');
 
-                    var success: bool = (mediaChecksum == checksum);
+                    var success: boolean = (mediaChecksum == checksum);
 
                     var mediaFile: any = {
                         'fileType': fileType,
@@ -589,14 +552,14 @@ class Server {
                 const boundary: string = multipart.getBoundary(this.req.headers['content-type']);
                 const boundaryRe = new RegExp(boundary, 'g');
 
-                var body: string = '',
+                var body: any = '',
                     writeStream = null; // for streamed file write
 
                 this.req.on('data', function(chunk) {
                     var chunkString: string = chunk.toString();
                     // indicates that next chunk will be octet stream
                     if (chunkString.match(/Content\-Type\: image\/tif/)) {
-                        const fileNameArray: array = chunkString.match(/filename=\"(.*)\"/);
+                        const fileNameArray: any = chunkString.match(/filename=\"(.*)\"/);
                         const fileName: string = fileNameArray[1];
                         // finish octet stream if any (when transfering toc_2 after toc_1 after cover, ...)
                         if (writeStream) {
@@ -913,7 +876,7 @@ class Server {
                     testLog("41", "POST");
                     var boundary: string = multipart.getBoundary(s.req.headers['content-type']);
 
-                    var body: string = '';
+                    var body: any = '';
                     s.req.on('data', function(chunk) {
                         body += chunk;
                     });
@@ -1036,10 +999,10 @@ class Server {
         /**
          * FILE STORAGE
          **/
+        /*
+        CDArcha neposkytuje download archivovanych souboru pres API
+        /*
         else if ((this.requrl.indexOf(urlStorage)) > 0) {
-            //var sigla: any = Permissions.refererValid(this.referer, this.remoteIP, this.encsigla);
-            testLog("41", "[FILE STORAGE] Sigla:" + sigla);
-
             var reqUrl: any = this.requrl.split('?')[0];
             var file: string = storageFolder + '/' + reqUrl.substring(urlStorage.length + 1);
 
@@ -1057,6 +1020,7 @@ class Server {
                 s.send404IfNotValue(null, 'No such file in storage.');
             }
         }
+        */
 
         /**
          * METADATA
@@ -1312,98 +1276,10 @@ class Server {
             return false;
         }
     }
-
-    getItemInfoFromItem(item: any): ItemInfo {
-        var itemInfo = <ItemInfo>{};
-        itemInfo.item = item;
-        itemInfo.ean13 = item.ean13;
-        itemInfo.ean13_other = item.ean13_other;
-        itemInfo.nbn = item.nbn;
-        itemInfo.ismn = item.ismn;
-        itemInfo.oclc = item.oclc;
-        itemInfo.uuid = item.uuid;
-        itemInfo.part_year = item.part_year;
-        itemInfo.part_volume = item.part_volume;
-        itemInfo.part_no = item.part_no;
-        itemInfo.part_name = item.part_name;
-        itemInfo.part_root = item.part_root || '1';
-        itemInfo.part_ean13_standalone = item.part_ean13_standalone || '0';
-        itemInfo.part_nbn_standalone = item.part_nbn_standalone || '0';
-        itemInfo.part_ismn_standalone = item.part_ismn_standalone || '0';
-        itemInfo.part_oclc_standalone = item.part_oclc_standalone || '0';
-        return itemInfo;
-    }
-
-    isGoodItemInfoForBibInfo(itemInfo: ItemInfo, bibinfo: any): boolean {
-        return (
-            // periodikum podle roku a cisla
-            (itemInfo.part_year && itemInfo.part_no && bibinfo.part_year && bibinfo.part_no && itemInfo.part_year == bibinfo.part_year && itemInfo.part_no == bibinfo.part_no) ||
-            // periodikum podle rocniku a cisla
-            (itemInfo.part_volume && itemInfo.part_no && bibinfo.part_volume && bibinfo.part_no && itemInfo.part_volume == bibinfo.part_volume && itemInfo.part_no == bibinfo.part_no) ||
-            // periodikum podle roku a rocniku
-            ((itemInfo.part_year || itemInfo.part_volume) && !itemInfo.part_no && (bibinfo.part_year || bibinfo.part_volume) && ((itemInfo.part_year == bibinfo.part_year && itemInfo.part_year) || (itemInfo.part_volume == bibinfo.part_volume && itemInfo.part_volume))) ||
-            // monografie podle cisla casti
-            (itemInfo.part_no && bibinfo.part_no && !bibinfo.part_year && !bibinfo.part_volume && itemInfo.part_no == bibinfo.part_no) ||
-            // monografie podle nazvu casti
-            (itemInfo.part_name && bibinfo.part_name && !bibinfo.part_year && !bibinfo.part_volume && itemInfo.part_name == bibinfo.part_name) ||
-            // souborny zaznam, nebo cast monografie bez dotazu na konkretni cast
-            (!bibinfo.part_no && !bibinfo.part_name && !bibinfo.part_year && !bibinfo.part_volume) ||
-            // souborny zaznam, s dotazem na cast monografie bez dotazu na konkretni cast
-            (!bibinfo.part_year && !bibinfo.part_volume && !itemInfo.part_no && !itemInfo.part_name));
-    }
-
-    itemFound(itemInfo: ItemInfo, bibinfo: any, j: number): boolean {
-        if (j == 0 && bibinfo.isbn) {
-            // ISBN
-            var isbnBib: any = bibinfo.isbn.split(' ')[0];
-            isbnBib = toEan(isbnBib);
-            if (!isbnBib || !itemInfo.ean13) return false;
-            if (isbnBib != itemInfo.ean13) return false;
-            if (itemInfo.part_root == '0' && itemInfo.part_ean13_standalone == '0' && !(bibinfo.part_no || bibinfo.part_name || bibinfo.part_year || bibinfo.part_volume)) return false;
-            return true;
-        } else if (j == 1 && bibinfo.nbn) {
-            // NBN
-            if (!bibinfo.nbn || !itemInfo.nbn) return false;
-            if (bibinfo.nbn != itemInfo.nbn) return false;
-            if (itemInfo.part_root == '0' && itemInfo.part_nbn_standalone == '0' && !(bibinfo.part_no || bibinfo.part_name || bibinfo.part_year || bibinfo.part_volume)) return false;
-            return true;
-        } else if (j == 2 && bibinfo.oclc) {
-            // OCLC
-            if (!bibinfo.oclc || !itemInfo.oclc) return false;
-            if (bibinfo.oclc != itemInfo.oclc) return false;
-            if (itemInfo.part_root == '0' && itemInfo.part_oclc_standalone == '0' && !(bibinfo.part_no || bibinfo.part_name || bibinfo.part_year || bibinfo.part_volume)) return false;
-            return true;
-        } else if (j == 3 && bibinfo.uuid) {
-            // UUID
-            if (!bibinfo.uuid.length || !itemInfo.uuid) return false;
-            return (itemInfo.uuid.indexOf(bibinfo.uuid) > -1) ? true : false;
-        } else if (j == 4 && bibinfo.ismn) {
-            // ISMN
-            if (!bibinfo.ismn || !itemInfo.ismn) return false;
-            bibinfo.ismn = bibinfo.ismn;
-            if (bibinfo.ismn != itemInfo.ismn) return false;
-            if (itemInfo.part_root == '0' && itemInfo.part_ismn_standalone == '0' && !(bibinfo.part_no || bibinfo.part_name || bibinfo.part_year || bibinfo.part_volume)) return false;
-            return true;
-        } else if (j == 5 && bibinfo.isbn) {
-            // OTHER ISBN
-            var isbnBib: any = bibinfo.isbn.split(' ')[0];
-            isbnBib = toEan(isbnBib);
-            var ean_other_length: number = 0;
-            if (itemInfo.ean13_other) ean_other_length = itemInfo.ean13_other.length;
-            for (var i: number = 0; i < ean_other_length; i++) {
-                var item = itemInfo.ean13_other[i];
-                if (!isbnBib || !item) return false;
-                if (isbnBib != item) return false;
-                if (itemInfo.part_root == '0' && itemInfo.part_ean13_standalone == '0' && !(bibinfo.part_no || bibinfo.part_name || bibinfo.part_year || bibinfo.part_volume)) return false;
-                return true;
-            }
-        }
-    }
 }
 
 module.exports = {
-    server: server,
-    getPerms: Permissions.getPerms
+    server: server
 }
 
 function testLog(color, message) {

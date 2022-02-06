@@ -21,13 +21,12 @@ export interface Bibdata {
     part_no_orig: string;
     part_note: string;
     part_note_orig: string;
-    col_ean13: string;
-    col_ismn: string;
-    col_oclc: string;
-    col_nbn: string;
-    col_title: string;
-    col_authors: string;
-    col_year: string;
+    part_ean13: string;
+    part_ismn: string;
+    part_oclc: string;
+    part_nbn: string;
+    part_title: string;
+    part_authors: string;
     dtCreated: number;
     dtLastUpdate: number;
 }
@@ -52,13 +51,12 @@ export class Bibinfo {
     part_no_orig: string;
     part_note: string;
     part_note_orig: string;
-    col_ean13: string;
-    col_ismn: string;
-    col_oclc: string;
-    col_nbn: string;
-    col_title: string;
-    col_authors: string;
-    col_year: string;
+    part_ean13: string;
+    part_ismn: string;
+    part_oclc: string;
+    part_nbn: string;
+    part_title: string;
+    part_authors: string;
     dtCreated: number;
     dtLastUpdate: number;
 
@@ -81,13 +79,12 @@ export class Bibinfo {
         this.part_no_orig = bibinfo.part_no_orig,
         this.part_note = bibinfo.part_note,
         this.part_note_orig = bibinfo.part_note_orig,
-        this.col_ean13 = bibinfo.col_ean13,
-        this.col_ismn = bibinfo.col_ismn,
-        this.col_oclc = bibinfo.col_oclc,
-        this.col_nbn = bibinfo.col_nbn,
-        this.col_title = bibinfo.col_title,
-        this.col_authors = bibinfo.col_authors,
-        this.col_year = bibinfo.col_year,
+        this.part_ean13 = bibinfo.part_ean13,
+        this.part_ismn = bibinfo.part_ismn,
+        this.part_oclc = bibinfo.part_oclc,
+        this.part_nbn = bibinfo.part_nbn,
+        this.part_title = bibinfo.part_title,
+        this.part_authors = bibinfo.part_authors,
         this.dtCreated = bibinfo.dtCreated,
         this.dtLastUpdate = bibinfo.dtLastUpdate;
     }
@@ -95,7 +92,6 @@ export class Bibinfo {
     static search(s: any, bibinfo: Bibdata, callback) {
         var dbFind = [];
         if (bibinfo.part_ean13) bibinfo.ean13 = bibinfo.part_ean13;
-        if (bibinfo.part_isbn) bibinfo.ean13 = bibinfo.part_isbn;
         if (bibinfo.part_nbn) bibinfo.nbn = bibinfo.part_nbn;
         if (bibinfo.part_oclc) bibinfo.oclc = bibinfo.part_oclc;
         if (bibinfo.part_ismn) bibinfo.ismn = bibinfo.part_ismn;
