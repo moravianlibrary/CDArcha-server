@@ -37,10 +37,9 @@ const storageFolder: string = process.env.STORAGE_DIR;
 
 // =========================================
 
-const request = require('request');
 const toEan = require('./to-ean').toEan;
 const partParser = require('./book-part-parser');
-const URL_lib = require('url');
+const URL_lib = require('url'); // deprecated
 const fs = require('fs');
 const md5 = require('md5');
 const http = require('http');
@@ -130,10 +129,11 @@ class Server {
     static placeholder: any = Buffer.from(Server.placeholderData);
 
     constructor(req: any, response: any, db: any) {
-        this.requrl = req.url;
-        testLog("33", "CD ARCHA v"+apiVersion+" starting...");
+        const url = this.requrl = req.url;
+        const urlQuery = url.substring(url.indexOf('?') + 1);
+        this.requrl = url;
+        this.query = new URLSearchParams(urlQuery);
         testLog("92", "Request url:" + this.requrl);
-        this.query = URL_lib.parse(this.requrl, true).query;
         this.date = new Date();
         this.timestamp = this.date.toISOString();
         this.now = this.date.getTime();
@@ -216,7 +216,7 @@ class Server {
             if (this.req.method == 'POST') {
                 testLog("41", "POST");
                 var boundary: string = multipart.getBoundary(this.req.headers['content-type']);
-                Helpers.checkApiLogin(s.db, this.query.login, this.query.password, this.query.version, apiVersion, function(resApiLogin, user) {
+                Helpers.checkApiLogin(s.db, this.query.get('login'), this.query.get('password'), this.query.get('version'), apiVersion, function(resApiLogin, user) {
                     if (resApiLogin) {
                       s.response.writeHead(resApiLogin);
                       s.response.end();
@@ -758,13 +758,13 @@ class Server {
         else if (this.requrl.indexOf(apiChecksum) > 0) {
             testLog("41", "[ API CHECKSUM ]");
 
-            if (!this.query.mediaid) {
+            if (!this.query.get('mediaid')) {
                 s.response.writeHead(404);
                 s.response.end(JSON.stringify({ "status": "mediaid missing" }));
                 return;
             }
 
-            s.db.collection(mediaCollection).findOne({ _id: new mongo.ObjectID(this.query.mediaid) }, function(err, item) {
+            s.db.collection(mediaCollection).findOne({ _id: new mongo.ObjectID(this.query.get('mediaid')) }, function(err, item) {
                 if (err) {
                     s.response.writeHead(404);
                     s.response.end(JSON.stringify({ "status": "error", "msg": err }));
@@ -793,13 +793,13 @@ class Server {
         else if (this.requrl.indexOf(apiGetMedia) > 0) {
             testLog("41", "[ API GET MEDIA ]");
 
-            if (!this.query.quickid) {
+            if (!this.query.get('quickid')) {
                 s.response.writeHead(404);
                 s.response.end(JSON.stringify({ "status": "quickid missing" }));
                 return;
             }
 
-            s.db.collection(mediaCollection).findOne({ 'quickId': this.query.quickid }, function(err, media) {
+            s.db.collection(mediaCollection).findOne({ 'quickId': this.query.get('quickid') }, function(err, media) {
                 if (err) {
                     s.response.writeHead(404);
                     s.response.end(JSON.stringify({ "status": "error", "msg": err }));
@@ -865,7 +865,7 @@ class Server {
         else if (this.requrl.indexOf(apiGetAllMediaList) > 0) {
             testLog("41", "[ API GET ALL MEDIA LIST ]");
 
-            Helpers.checkApiLogin(s.db, this.query.login, this.query.password, this.query.version, apiVersion, function(resApiLogin) {
+            Helpers.checkApiLogin(s.db, this.query.get('login'), this.query.get('password'), this.query.get('version'), apiVersion, function(resApiLogin) {
                 if (resApiLogin) {
                   s.response.writeHead(resApiLogin);
                   s.response.end();
@@ -968,7 +968,7 @@ class Server {
             const opCode = op=='close'?1:0;
             testLog("41", "[ API " + op=='close'?'CLOSE':'OPEN' + "ARCHIVE ]");
 
-            const id = this.query.id;
+            const id = this.query.get('id');
             if (!id) {
                 s.response.writeHead(404);
                 s.response.end(JSON.stringify({ "status": "id missing" }));
@@ -1031,25 +1031,25 @@ class Server {
                 multis: any = [];
 
             // podpora dotazu na jeden zaznam
-            if (!this.query.multi) {
+            if (!this.query.get('multi')) {
                 var multi = {};
-                for (var queryKey in this.query) {
+                this.query.forEach(function(queryValue, queryKey) {
                     switch (queryKey) {
                         case 'isbn':
-                        case 'ean': multi[queryKey] = this.query.isbn; break;
-                        case 'nbn': multi[queryKey] = this.query.nbn; break;
-                        case 'ismn': multi[queryKey] = this.query.ismn; break;
-                        case 'oclc': multi[queryKey] = this.query.oclc; break;
-                        case 'uuid': multi[queryKey] = this.query.uuid; break;
-                        case 'sysno': multi[queryKey] = this.query.sysno; break;
-                        case 'sigla': multi[queryKey] = this.query.sigla; break;
+                        case 'ean': multi[queryKey] = this.query.get('isbn'); break;
+                        case 'nbn': multi[queryKey] = this.query.get('nbn'); break;
+                        case 'ismn': multi[queryKey] = this.query.get('ismn'); break;
+                        case 'oclc': multi[queryKey] = this.query.get('oclc'); break;
+                        case 'uuid': multi[queryKey] = this.query.get('uuid'); break;
+                        case 'sysno': multi[queryKey] = this.query.get('sysno'); break;
+                        case 'sigla': multi[queryKey] = this.query.get('sigla'); break;
                     }
-                }
+                });
                 multis.push(multi);
             }
             else {
                 try {
-                    multis = JSON.parse(decodeURIComponent(this.query.multi));
+                    multis = JSON.parse(decodeURIComponent(this.query.get('multi')));
                 } catch (err) {
                     this.send404IfNotValue(false, 'Check query syntax');
                     return;
@@ -1081,7 +1081,8 @@ class Server {
                                 if (isbn.length) {
                                     var ean: string = toEan(isbn);
                                     if (ean.length) {
-                                        queryBiblio.push({ ean13: ean });
+                                        queryBiblio.push({ ean13: ean }); // normalizovane
+                                        queryBiblio.push({ ean13: isbn }); // nenormalizovane
                                     }
                                 }
                             }

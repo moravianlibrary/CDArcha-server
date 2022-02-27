@@ -1,10 +1,10 @@
 const passport = require('passport');
 const request = require('request');
 const { Strategy: LocalStrategy } = require('passport-local');
-const { Strategy: GitHubStrategy } = require('passport-github');
-const { OAuth2Strategy: GoogleStrategy } = require('passport-google-oauth');
-const { OAuthStrategy } = require('passport-oauth');
-const { OAuth2Strategy } = require('passport-oauth');
+//const { Strategy: GitHubStrategy } = require('passport-github');
+//const { OAuth2Strategy: GoogleStrategy } = require('passport-google-oauth');
+//const { OAuthStrategy } = require('passport-oauth');
+//const { OAuth2Strategy } = require('passport-oauth');
 
 const User = require('../models/User');
 
@@ -55,6 +55,7 @@ passport.use(new LocalStrategy({ usernameField: 'email' }, (email, password, don
 /**
  * Sign in with GitHub.
  */
+/*
 passport.use(new GitHubStrategy({
   clientID: process.env.GITHUB_ID,
   clientSecret: process.env.GITHUB_SECRET,
@@ -110,10 +111,12 @@ passport.use(new GitHubStrategy({
     });
   }
 }));
+*/
 
 /**
  * Sign in with Google.
  */
+/*
 passport.use(new GoogleStrategy({
   clientID: process.env.GOOGLE_ID,
   clientSecret: process.env.GOOGLE_SECRET,
@@ -168,6 +171,7 @@ passport.use(new GoogleStrategy({
     });
   }
 }));
+*/
 
 /**
  * Login Required middleware.
