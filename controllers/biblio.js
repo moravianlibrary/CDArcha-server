@@ -10,7 +10,7 @@ exports.getList = (req, res) => {
     return res.redirect('/cdarcha/login');
   }
   res.render('biblio/list', {
-    title: 'Bibliografické záznamy'
+    title: 'Tituly'
   });
 };
 
@@ -26,7 +26,6 @@ exports.getListDataset = (req, res) => {
     var searchPhrase = req.query.search || '';
     searchQuery = {
       $or: [
-        { '_id': searchPhrase },
         { 'title': new RegExp(searchPhrase, "i") },
         { 'authors': new RegExp(searchPhrase, "i") },
         { 'ean13': new RegExp(searchPhrase, "i") },
@@ -34,6 +33,7 @@ exports.getListDataset = (req, res) => {
         { 'oclc': new RegExp(searchPhrase, "i") }
       ]
     };
+    if (searchPhrase.length >= 12) searchQuery['$or'].push({ '_id': mongoose.Types.ObjectId(searchPhrase) });
   }
 
   var orderField = req.query.sort || 'title',

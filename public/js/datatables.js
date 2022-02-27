@@ -199,7 +199,7 @@ function initTableArchive(table) {
 
 function operateFormatterArchive(value, row, index) {
     return [
-        '<a class="edit-archive" href="javascript:void(0)" title="Upravit">',
+        '<a class="edit-archive" href="javascript:void(0)" title="Upravit" data-bs-target="#edit-archive-modal">',
         '<i class="glyphicon glyphicon-edit"></i>',
         '</a> &nbsp; ',
         '<a class="remove-archive" href="javascript:void(0)" title="Odstránit">',
@@ -231,7 +231,11 @@ function statusFormatterArchive(value, row, index) {
 
 window.operateEventsArchive = {
     'click .edit-archive': function (e, value, row, index) {
-        $('#edit-archive-modal').data('id', row._id).modal();
+        $('#edit-archive-modal').data('id', row._id);
+        var modal = new bootstrap.Modal(document.getElementById('edit-archive-modal'), {
+            keyboard: false
+        });
+        modal.show();
     },
     'click .remove-archive': function (e, value, row, index) {
         var r = confirm("Skutečne smazat archiv " + row._id + " ?");

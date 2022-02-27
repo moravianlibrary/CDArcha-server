@@ -6,19 +6,19 @@ block content
 
   form(action='/cdarcha/account/profile', method='POST')
     input(type='hidden', name='_csrf', value=_csrf)
-    .form-group.row
+    .form-group.row.mb-3
       label.col-md-3.col-form-label.font-weight-bold.text-right(for='email') Email
       .col-md-7.padding-top-small
         input.form-control(type='email', name='email', id='email', placeholder='Email', value=user.email, required)
-    .form-group.row
+    .form-group.row.mb-3
       label.col-md-3.col-form-label.font-weight-bold.text-right(for='sigla') Sigla
       .col-md-7
         input.form-control(type='sigla', name='sigla', id='sigla', placeholder='Sigla', value=user.sigla, required)
-    .form-group.row
+    .form-group.row.mb-3
       label.col-md-3.col-form-label.font-weight-bold.text-right(for='institution') Název instituce
       .col-md-7
         input.form-control(type='text', name='institution', id='institution', placeholder='Název instituce', required)
-    .form-group.row
+    .form-group.row.mb-3
       label.col-md-3.col-form-label.font-weight-bold.text-right(for='sigla') Role
       .col-md-7.padding-top-small
         strong
@@ -28,7 +28,7 @@ block content
             | Kurátor (archivuje a spravuje archivy)
           else
             | Archivátor (pouze archivuje)
-    .form-group
+    .form-group.mb-3
       .offset-sm-3.col-md-7.pl-2
         button.btn.btn.btn-primary(type='submit')
           i.fas.fa-pencil-alt.fa-sm
@@ -39,15 +39,15 @@ block content
 
   form(action='/cdarcha/account/password', method='POST')
     input(type='hidden', name='_csrf', value=_csrf)
-    .form-group.row
+    .form-group.row.mb-3
       label.col-md-3.col-form-label.font-weight-bold.text-right(for='password') Nové heslo
       .col-md-7
         input.form-control(type='password', name='password', id='password')
-    .form-group.row
+    .form-group.row.mb-3
       label.col-md-3.col-form-label.font-weight-bold.text-right(for='confirmPassword') Potvrdit heslo
       .col-md-7
         input.form-control(type='password', name='confirmPassword', id='confirmPassword')
-    .form-group
+    .form-group.mb-3
       .offset-sm-3.col-md-7.pl-2
         button.btn.btn-primary(type='submit')
           i.fas.fa-lock.fa-sm
@@ -65,16 +65,16 @@ block content
           i.fas.fa-trash-alt.fa-sm
           | Smazat uživatelský účet
 
-  .pb-2.mt-2.mb-4.border-bottom
-    h3 Propojené účty
-  .form-group
-    .offset-sm-3.col-md-7.pl-2
-      if user.google
-        p.mb-1: a.text-danger(href='/cdarcha/account/unlink/google') Rozvázat s Google účtem
-      else
-        p.mb-1: a(href='/cdarcha/auth/google') Svázat s Google účtem
-    .offset-sm-3.col-md-7.pl-2
-      if user.github
-        p.mb-1: a.text-danger(href='/cdarcha/account/unlink/github') Rozvázat s GitHub účtem
-      else
-        p.mb-1: a(href='/cdarcha/auth/github') Svázat s GitHub účtem
+  //  .pb-2.mt-2.mb-4.border-bottom
+  //    h3 Propojené účty
+  //  .form-group
+  //    .offset-sm-3.col-md-7.pl-2
+  //      if user.google
+  //        p.mb-1: a.text-danger(href='/cdarcha/account/unlink/google') Rozvázat s Google účtem
+  //      else
+  //        p.mb-1: a(href='/cdarcha/auth/google') Svázat s Google účtem
+  //    .offset-sm-3.col-md-7.pl-2
+  //      if user.github
+  //        p.mb-1: a.text-danger(href='/cdarcha/account/unlink/github') Rozvázat s GitHub účtem
+  //      else
+  //        p.mb-1: a(href='/cdarcha/auth/github') Svázat s GitHub účtem

@@ -3,17 +3,17 @@
 		<!-- Admin version -->
 		<version type="Admin">
 			<major>1</major>
-			<minor>4</minor>
-			<date>09/18/2020</date>
-			<checksum>188bb6d119213455dd4bb04fdd4d8c3930b3d5e552bd430958d89ed1c1d4faae</checksum>
+			<minor>5</minor>
+			<date>06/08/2021</date>
+			<checksum>b03075e5a8ff5a17cbd6f24f2ecb926d62e6be935da09de66a3dd29220e2cc33</checksum>
 			<download>https://cdarcha.mzk.cz/cdarcha_klient/CDArcha_klient_setup.exe</download>
 		</version>
 		<!-- NoAdmin version -->
 		<version type="User">
 			<major>1</major>
-			<minor>4</minor>
-			<date>09/18/2020</date>
-			<checksum>563ab0a947c5babc9cea36916bab612d3e5233d1f75e5ddab84a6e43fc40d9b4</checksum>
+			<minor>5</minor>
+			<date>06/08/2021</date>
+			<checksum>c48d9df741b04c09887bcbd5530ead1a32d6b85b7c1817261b53af22b7383e04</checksum>
 			<download>https://cdarcha.mzk.cz/cdarcha_klient/CDArcha_klient_setupNoAdmin.exe</download>
 		</version>
 	</latest-version>

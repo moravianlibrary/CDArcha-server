@@ -103,7 +103,7 @@ exports.postSignup = (req, res, next) => {
       if (err) { return next(err); }
       const transporter = nodemailer.createTransport({
         port: '25',
-        host: 'mail.mzk.cz'
+        host: process.env.EMAIL_SERVER
       });
       const mailOptions = {
         to: user.email,

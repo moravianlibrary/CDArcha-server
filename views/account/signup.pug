@@ -5,26 +5,26 @@ block content
     h3 Vytvořit účet
   form(id='signup-form', method='POST')
     input(type='hidden', name='_csrf', value=_csrf)
-    .form-group.row
+    .form-group.row.mb-3
       label.col-md-3.col-form-label.font-weight-bold.text-right(for='email') Email
       .col-md-7
         input.form-control(type='email', name='email', id='email', placeholder='Email', autofocus, required)
-    .form-group.row
+    .form-group.row.mb-3
       label.col-md-3.col-form-label.font-weight-bold.text-right(for='sigla') Sigla
       .col-md-7
         input.form-control(type='text', name='sigla', id='sigla', placeholder='Sigla', required)
-    .form-group.row
+    .form-group.row.mb-3
       label.col-md-3.col-form-label.font-weight-bold.text-right(for='institution') Název instituce
       .col-md-7
         input.form-control(type='text', name='institution', id='institution', placeholder='Název instituce', required)
-    .form-group.row
+    .form-group.row.mb-3
       label.col-md-3.col-form-label.font-weight-bold.text-right(for='role') Role
       .col-md-7
         select.form-control(name='roleType', id='role', placeholder='Zvolte roli', required)
           option(value="0") Sysadmin (může všechno i zakládat uživatele)
           option(value="1") Kurátor (archivuje a spravuje archivy)
           option(value="2", selected) Archivátor (pouze archivuje)
-    .form-group.offset-sm-3.col-md-7.pl-2
+    .form-group.offset-sm-3.col-md-7.pl-2.mb-3
       button.btn.btn-success(type='submit')
         i.fas.fa-user-plus.fa-sm
         | Vytvořit účet

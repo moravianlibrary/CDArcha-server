@@ -1,6 +1,6 @@
 // ====================== Archive.TS ===================
 
-const uuidv1 = require('uuid/v1');
+const { v1: uuidv1 } = require('uuid');
 
 let archiveCollection: string = "archive";
 

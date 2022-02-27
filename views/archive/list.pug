@@ -44,17 +44,15 @@ block content
           textarea#textarea-content-treeview.w-100.form-control(style="height:800px;", disabled="disabled")
 
   #edit-archive-modal.modal(tabindex="-1", role="dialog")
-    .modal-dialog(role="document")
+    .modal-dialog
       .modal-content
         .modal-header
           h5.modal-title Editace archivu
-          button.close(type="button", data-dismiss="modal", aria-label="Zavřít")
-            span(aria-hidden="true") &times;
+          button.btn-close(type="button", data-bs-dismiss="modal", aria-label="Zavřít")
         .modal-body
-          p Modal body text goes here.
         .modal-footer
           button.btn.btn-primary.save-archive(type="button") Uložit
-          button.btn.btn-secondary(type="button", data-dismiss="modal") Zavřít
+          button.btn.btn-secondary(type="button", data-bs-dismiss="modal") Zavřít
 
   #archive-pluged.toast
     .toast-header CDArcha akce

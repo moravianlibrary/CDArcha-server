@@ -1,0 +1,5 @@
+# backend
+npm i --save fs md5 http mongodb http-proxy parse-multipart xml-formatter typescript dotenv https uuid bcrypt
+# frontend
+npm i --save express bootstrap bootstrap-table pug express-session connect-mongo mongoose compression body-parser morgan errorhandler express-flash passport passport-local express-validator moment nodemailer @octokit/rest @types/node request
+@types/mongodb @ladjs/bootstrap-social request node-sass

@@ -3,7 +3,6 @@
  */
 const cdarcha = require('cdarcha_api');
 const dotenv = require('dotenv');
-const request = require('request');
 const http = require('http');
 const https = require('https');
 const fs = require('fs');
@@ -16,18 +15,16 @@ const compression = require('compression');
 const session = require('express-session');
 const bodyParser = require('body-parser');
 const logger = require('morgan');
-const chalk = require('chalk');
 const errorHandler = require('errorhandler');
-const lusca = require('lusca');
 const MongoStore = require('connect-mongo');
 const flash = require('express-flash');
 const path = require('path');
 const mongoose = require('mongoose');
 const passport = require('passport');
-const sass = require('node-sass-middleware');
+//const sass = require('node-sass-middleware');
 const moment = require('moment');
-const multer = require('multer');
-const upload = multer({ dest: path.join(__dirname, 'uploads') });
+//const multer = require('multer');
+//const upload = multer({ dest: path.join(__dirname, 'uploads') });
 const { check, validationResult } = require('express-validator');
 
 /**
@@ -44,7 +41,7 @@ const client = new MongoClient(process.env.MONGODB_URI, { useUnifiedTopology: tr
 const httpsOptions = {
   key: fs.readFileSync(process.env.HTTPS_PRIV_FILE),
   cert: fs.readFileSync(process.env.HTTPS_CERT_FILE),
-  ca: [ fs.readFileSync(process.env.HTTPS_CA_FILE) ]
+//  ca: [ fs.readFileSync(process.env.HTTPS_CA_FILE) ]
 };
 
 /**
@@ -98,7 +95,7 @@ const app = express();
 mongoose.connect(process.env.MONGODB_URI);
 mongoose.connection.on('error', (err) => {
   console.error(err);
-  console.log('%s MongoDB connection error. Please make sure MongoDB is running.', chalk.red('✗'));
+  console.log('MongoDB connection error. Please make sure MongoDB is running.');
   process.exit();
 });
 
@@ -110,13 +107,13 @@ app.set('port', process.env.HTTP_FRONT_PORT);
 app.set('views', path.join(__dirname, 'views'));
 app.set('view engine', 'pug');
 app.use(compression());
-app.use(sass({
+/*app.use(sass({
   src: path.join(__dirname, 'public'),
   dest: path.join(__dirname, 'public'),
   prefix:  '/cdarcha',
   debug: true,
   outputStyle: 'compressed'
-}));
+}));*/
 app.use(logger('dev'));
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
@@ -133,21 +130,10 @@ app.use(session({
 app.use(passport.initialize());
 app.use(passport.session());
 app.use(flash());
-/*
-app.use((req, res, next) => {
-  if (req.path === '/cdarcha/api/upload') {
-    next();
-  } else {
-    lusca.csrf()(req, res, next);
-  }
-});
-app.use(lusca.xframe('SAMEORIGIN'));
-app.use(lusca.xssProtection(true));
-*/
 app.disable('x-powered-by');
 app.use((req, res, next) => {
   res.locals.user = req.user;
-  res.locals.moment = require('moment');
+  res.locals.moment = moment;
   next();
 });
 app.use((req, res, next) => {
@@ -256,7 +242,7 @@ app.moment = moment;
  * Start Express server.
  */
 app.listen(app.get('port'), () => {
-  console.log('%s App is running at http://localhost:%d in %s mode', chalk.green('✓'), app.get('port'), app.get('env'));
+  console.log('App is running at http://localhost:%d in %s mode', app.get('port'), app.get('env'));
   console.log('  Press CTRL-C to stop\n');
 });
 

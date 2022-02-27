@@ -11,9 +11,7 @@
   // Import the fonts
   @font-face {
     font-family: 'Glyphicons Halflings';
-    src: url('#{$fa-font-path}/glyphicons-halflings-regular.eot'), url('#{$fa-font-path}/glyphicons-halflings-regular.eot');
-    src: url('#{$fa-font-path}/glyphicons-halflings-regular.eot?#iefix'), url('#{$fa-font-path}/glyphicons-halflings-regular.eot?#iefix') format('embedded-opentype'),
-         url('#{$fa-font-path}/glyphicons-halflings-regular.woff2'), url('#{$fa-font-path}/glyphicons-halflings-regular.woff2') format('woff2'),
+    src: url('#{$fa-font-path}/glyphicons-halflings-regular.woff2'), url('#{$fa-font-path}/glyphicons-halflings-regular.woff2') format('woff2'),
          url('#{$fa-font-path}/glyphicons-halflings-regular.woff'), url('#{$fa-font-path}/glyphicons-halflings-regular.woff') format('woff'),
          url('#{$fa-font-path}/glyphicons-halflings-regular.ttf'), url('#{$fa-font-path}/glyphicons-halflings-regular.ttf') format('truetype'),
          url('#{$fa-font-path}/glyphicons-halflings-regular.svg'), url('#{$fa-font-path}/glyphicons-halflings-regular.svg') format('svg');
