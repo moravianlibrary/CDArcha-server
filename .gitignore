@@ -1,3 +1,9 @@
+cert
+cert/cert.pem
+cert/privkey.pem
+cert/ca.pem
+cert/CA.pem
+
 lib-cov
 *.seed
 *.log
