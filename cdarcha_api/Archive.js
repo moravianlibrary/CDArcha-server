@@ -29,7 +29,8 @@ var Archive = /** @class */ (function () {
                 return;
             }
             else {
-                console.log('not found');
+                console.log('archive not found');
+                console.dir({ biblio: archive.biblio, status: 0 });
                 callback(undefined);
             }
         });
@@ -45,7 +46,7 @@ var Archive = /** @class */ (function () {
         archive.status = 0;
         archive.uuid = uuidv1();
         archive.dtCreated = archive.dtLastUpdate = Date.now();
-        s.db.collection(archiveCollection).insert(archive, { w: 1 }, function (err, result) {
+        s.db.collection(archiveCollection).insertOne(archive, { w: 1 }, function (err, result) {
             if (err) {
                 console.log(err);
                 callback(undefined);
@@ -65,7 +66,11 @@ var Archive = /** @class */ (function () {
                         callback(undefined);
                     }
                     else {
-                        callback(resInsert.ops[0]);
+                        s.db.collection(archiveCollection).findOne({ _id: resInsert.insertedId }, function (err, insertedRec) {
+                            if (err)
+                                callback(undefined);
+                            callback(insertedRec);
+                        });
                     }
                 });
             }

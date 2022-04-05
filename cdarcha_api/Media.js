@@ -25,7 +25,8 @@ var Media = /** @class */ (function () {
                 return;
             }
             else {
-                console.log('not found');
+                console.log('media not found');
+                console.dir({ archive: media.archive, mediaNo: media.mediaNo });
                 callback(undefined);
             }
         });
@@ -41,7 +42,7 @@ var Media = /** @class */ (function () {
             return;
         }
         media.dtCreated = media.dtLastUpdate = Date.now();
-        s.db.collection(mediaCollection).insert(media, { w: 1 }, function (err, result) {
+        s.db.collection(mediaCollection).insertOne(media, { w: 1 }, function (err, result) {
             if (err) {
                 console.log(err);
                 callback(undefined);
@@ -61,7 +62,11 @@ var Media = /** @class */ (function () {
                         callback(undefined);
                     }
                     else {
-                        callback(resInsert.ops[0]);
+                        s.db.collection(mediaCollection).findOne({ _id: resInsert.insertedId }, function (err, insertedRec) {
+                            if (err)
+                                callback(undefined);
+                            callback(insertedRec);
+                        });
                     }
                 });
             }

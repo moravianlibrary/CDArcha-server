@@ -417,7 +417,7 @@ var Server = /** @class */ (function () {
                 var writeStream = fs.createWriteStream(tmpFolder + '/iso/' + mediaId + '.iso', { flags: 'w' });
                 this.req.pipe(writeStream, { end: false });
                 this.req.pipe(hash);
-                this.req.on('end', function () {
+                var closeFileTransfer = function () {
                     testLog("41", "[ CHUNK FINISHED ]");
                     writeStream.end();
                     hash.end();
@@ -445,7 +445,7 @@ var Server = /** @class */ (function () {
                                 return false;
                             }
                             var archiveId = mediaItem.archive;
-                            s.db.collection(mediaCollection).update({ _id: new mongo.ObjectID(mediaId) }, { $set: mediaFile });
+                            s.db.collection(mediaCollection).updateOne({ _id: new mongo.ObjectID(mediaId) }, { $set: mediaFile });
                             s.db.collection(archiveCollection).findOne({ _id: new mongo.ObjectID(archiveId) }, function (err, archive) {
                                 if (err) {
                                     console.log(err);
@@ -476,7 +476,9 @@ var Server = /** @class */ (function () {
                     }
                     s.response.writeHead(200);
                     s.response.end('ok');
-                });
+                };
+                this.req.on('error', closeFileTransfer);
+                this.req.on('end', closeFileTransfer);
             }
             else {
                 this.send404IfNotValue(false, 'POST method required');
@@ -899,7 +901,7 @@ var Server = /** @class */ (function () {
                         return;
                     }
                     var archiveId = archiveDoc ? id_1 : mediaDoc.archive;
-                    s.db.collection(archiveCollection).update({ _id: new mongo.ObjectID(archiveId) }, { $set: { status: opCode_1 } });
+                    s.db.collection(archiveCollection).updateOne({ _id: new mongo.ObjectID(archiveId) }, { $set: { status: opCode_1 } });
                 });
             });
         }

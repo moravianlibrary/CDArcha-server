@@ -55,7 +55,8 @@ export class Files {
                 callback(items);
                 return;
             } else {
-                console.log('not found');
+                console.log('file not found');
+                console.dir(searchQuery);
                 callback(undefined);
             }
         });
@@ -130,7 +131,10 @@ export class Files {
                         console.log(err);
                         callback(undefined);
                     } else {
-                        callback(resInsert.ops[0]);
+                        s.db.collection(filesCollection).findOne({_id: resInsert.insertedId}, function(err, insertedRec) {
+                            if (err) callback(undefined);
+                            callback(insertedRec);
+                        });
                     }
                 });
             }
@@ -148,7 +152,10 @@ export class Files {
                         console.log(err);
                         callback(undefined);
                     } else {
-                        callback(resInsert.ops[0]);
+                        s.db.collection(filesCollection).findOne({_id: resInsert.insertedId}, function(err, insertedRec) {
+                            if (err) callback(undefined);
+                            callback(insertedRec);
+                        });
                     }
                 });
             }

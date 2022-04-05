@@ -70,7 +70,8 @@ exports.getListDataset = (req, res) => {
         for (var i=0; i<archive.length; i++) {
           var archItem = archive[i];
           const resBib = await Biblio.findById(archItem.biblio).exec();
-          archItem['_doc']['uuidTitle'] = '<strong>' + archItem.uuid + '</strong><br/><span style="font-size:small;"><i>' + resBib.authors + '</i><br/><u>' + resBib.title + '</u><br/>' + (resBib.ean13?'ISBN: '+resBib.ean13:'') + ' ' + (resBib.nbn?'ČNB: '+resBib.nbn:'') + '</span>';
+          archItem['_doc']['uuidTitle'] = '';
+          if (resBib) archItem['_doc']['uuidTitle'] = '<strong>' + archItem.uuid + '</strong><br/><span style="font-size:small;"><i>' + resBib.authors + '</i><br/><u>' + resBib.title + '</u><br/>' + (resBib.ean13?'ISBN: '+resBib.ean13:'') + ' ' + (resBib.nbn?'ČNB: '+resBib.nbn:'') + '</span>';
         };
 
         var out = {

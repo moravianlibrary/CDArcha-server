@@ -48,7 +48,8 @@ export class Media {
                 callback(items);
                 return;
             } else {
-                console.log('not found');
+                console.log('media not found');
+                console.dir({ archive: media.archive, mediaNo: media.mediaNo });
                 callback(undefined);
             }
         });
@@ -68,7 +69,7 @@ export class Media {
 
         media.dtCreated = media.dtLastUpdate = Date.now();
 
-        s.db.collection(mediaCollection).insert(media, { w: 1 }, function(err, result) {
+        s.db.collection(mediaCollection).insertOne(media, { w: 1 }, function(err, result) {
             if (err) {
                 console.log(err);
                 callback(undefined);
@@ -87,7 +88,10 @@ export class Media {
                         console.log(err);
                         callback(undefined);
                     } else {
-                        callback(resInsert.ops[0]);
+                        s.db.collection(mediaCollection).findOne({_id: resInsert.insertedId}, function(err, insertedRec) {
+                            if (err) callback(undefined);
+                            callback(insertedRec);
+                        });
                     }
                 });
             }

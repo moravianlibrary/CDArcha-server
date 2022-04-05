@@ -45,7 +45,8 @@ export class Archive {
                 callback(items);
                 return;
             } else {
-                console.log('not found');
+                console.log('archive not found');
+                console.dir({ biblio: archive.biblio, status: 0 });
                 callback(undefined);
             }
         });
@@ -64,7 +65,7 @@ export class Archive {
         archive.uuid = uuidv1();
         archive.dtCreated = archive.dtLastUpdate = Date.now();
 
-        s.db.collection(archiveCollection).insert(archive, { w: 1 }, function(err, result) {
+        s.db.collection(archiveCollection).insertOne(archive, { w: 1 }, function(err, result) {
             if (err) {
                 console.log(err);
                 callback(undefined);
@@ -83,7 +84,10 @@ export class Archive {
                         console.log(err);
                         callback(undefined);
                     } else {
-                        callback(resInsert.ops[0]);
+                        s.db.collection(archiveCollection).findOne({_id: resInsert.insertedId}, function(err, insertedRec) {
+                            if (err) callback(undefined);
+                            callback(insertedRec);
+                        });
                     }
                 });
             }

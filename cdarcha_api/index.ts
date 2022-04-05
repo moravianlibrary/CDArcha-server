@@ -468,7 +468,7 @@ class Server {
                 this.req.pipe(writeStream, { end: false });
                 this.req.pipe(hash);
 
-                this.req.on('end', function() {
+                var closeFileTransfer = function() {
                     testLog("41", "[ CHUNK FINISHED ]");
                     writeStream.end();
                     hash.end();
@@ -500,7 +500,7 @@ class Server {
                             }
 
                             var archiveId: any = mediaItem.archive;
-                            s.db.collection(mediaCollection).update({ _id: new mongo.ObjectID(mediaId) }, { $set: mediaFile });
+                            s.db.collection(mediaCollection).updateOne({ _id: new mongo.ObjectID(mediaId) }, { $set: mediaFile });
 
                             s.db.collection(archiveCollection).findOne({ _id: new mongo.ObjectID(archiveId) }, function(err, archive) {
                                 if (err) {
@@ -535,7 +535,10 @@ class Server {
 
                     s.response.writeHead(200);
                     s.response.end('ok');
-                });
+                }
+
+                this.req.on('error', closeFileTransfer);
+                this.req.on('end', closeFileTransfer);
             } else {
                 this.send404IfNotValue(false, 'POST method required');
             }
@@ -991,7 +994,7 @@ class Server {
                     }
 
                     const archiveId = archiveDoc ? id : mediaDoc.archive;
-                    s.db.collection(archiveCollection).update({ _id: new mongo.ObjectID(archiveId) }, { $set: { status: opCode } });
+                    s.db.collection(archiveCollection).updateOne({ _id: new mongo.ObjectID(archiveId) }, { $set: { status: opCode } });
                 });
             });
         }

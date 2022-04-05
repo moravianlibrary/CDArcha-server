@@ -33,7 +33,8 @@ var Files = /** @class */ (function () {
                 return;
             }
             else {
-                console.log('not found');
+                console.log('file not found');
+                console.dir(searchQuery);
                 callback(undefined);
             }
         });
@@ -111,7 +112,11 @@ var Files = /** @class */ (function () {
                         callback(undefined);
                     }
                     else {
-                        callback(resInsert.ops[0]);
+                        s.db.collection(filesCollection).findOne({ _id: resInsert.insertedId }, function (err, insertedRec) {
+                            if (err)
+                                callback(undefined);
+                            callback(insertedRec);
+                        });
                     }
                 });
             }
@@ -129,7 +134,11 @@ var Files = /** @class */ (function () {
                         callback(undefined);
                     }
                     else {
-                        callback(resInsert.ops[0]);
+                        s.db.collection(filesCollection).findOne({ _id: resInsert.insertedId }, function (err, insertedRec) {
+                            if (err)
+                                callback(undefined);
+                            callback(insertedRec);
+                        });
                     }
                 });
             }

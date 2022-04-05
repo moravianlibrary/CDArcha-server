@@ -96,7 +96,8 @@ var Bibinfo = /** @class */ (function () {
                 }
             }
             else {
-                console.log('not found');
+                console.log('biblio not found');
+                console.dir({ $or: dbFind });
                 callback(undefined);
             }
         });
@@ -109,7 +110,7 @@ var Bibinfo = /** @class */ (function () {
             }
         });
         bibinfo.dtCreated = bibinfo.dtLastUpdate = Date.now();
-        s.db.collection(metaCollection).insert(bibinfo, { w: 1 }, function (err, result) {
+        s.db.collection(metaCollection).insertOne(bibinfo, { w: 1 }, function (err, result) {
             if (err) {
                 console.log(err);
                 callback(undefined);
@@ -129,7 +130,11 @@ var Bibinfo = /** @class */ (function () {
                         callback(undefined);
                     }
                     else {
-                        callback(resInsert.ops[0]);
+                        s.db.collection(metaCollection).findOne({ _id: resInsert.insertedId }, function (err, insertedRec) {
+                            if (err)
+                                callback(undefined);
+                            callback(insertedRec);
+                        });
                     }
                 });
             }
