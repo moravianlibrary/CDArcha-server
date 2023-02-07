@@ -8,7 +8,7 @@ const dotenv = require('dotenv');
 dotenv.config({ path: '.env' });
 
 // url na backend
-const urlMain: string = process.env.BASE_DOMAIN
+const urlMain: string = process.env.BASE_DOMAIN || "";
 
 const urlPart: string = "/"
 const apiImport: string = "api/import"
@@ -32,8 +32,8 @@ const filesCollection: string = "files"
 const usersCollection: string = "users"
 // temporary files
 //const tmpFolder: string = "/home/cdarcha/cdarcha/tmp";
-const tmpFolder: string = process.env.TMP_DIR;
-const storageFolder: string = process.env.STORAGE_DIR;
+const tmpFolder: string = process.env.TMP_DIR || "";
+const storageFolder: string = process.env.STORAGE_DIR || "";
 
 // =========================================
 
@@ -94,6 +94,7 @@ interface ItemInfo {
     item: any;
     ean13: any;
     nbn: any;
+    issn: any;
     ismn: any;
     oclc: any;
     part_year: any;
@@ -103,6 +104,7 @@ interface ItemInfo {
     part_root: any;
     part_ean13_standalone: any;
     part_nbn_standalone: any;
+    part_issn_standalone: any;
     part_ismn_standalone: any;
     part_oclc_standalone: any;
 }
@@ -133,7 +135,6 @@ class Server {
         const urlQuery = url.substring(url.indexOf('?') + 1);
         this.requrl = url;
         this.query = new URLSearchParams(urlQuery);
-        testLog("92", "Request url:" + this.requrl);
         this.date = new Date();
         this.timestamp = this.date.toISOString();
         this.now = this.date.getTime();
@@ -141,6 +142,13 @@ class Server {
         this.req = req;
         this.response = response;
         this.db = db;
+        
+        let urlLog = url;
+        const passwdPos = url.indexOf('password=');
+        if (passwdPos !== -1) {
+            urlLog = url.substring(1,passwdPos) + 'password=***';
+        }
+        testLog("92", "Request url:" + urlLog);
     }
 
 
@@ -181,7 +189,7 @@ class Server {
         else if (this.requrl.substr(0,12) === '/.well-known') {
             testLog("41", "[LETS ENCRYPT]");
 
-            var fileName: any = this.requrl.substr(13);
+            var fileName: any = this.requrl.substr(1);
             if (fs.existsSync(fileName)) {
                 var readStream: any = fs.createReadStream(fileName);
                 readStream.pipe(this.response);
@@ -214,7 +222,7 @@ class Server {
             testLog("41", "[ API IMPORT ]");
 
             if (this.req.method == 'POST') {
-                testLog("41", "POST");
+                testLog("req.method: POST");
                 var boundary: string = multipart.getBoundary(this.req.headers['content-type']);
                 Helpers.checkApiLogin(s.db, this.query.get('login'), this.query.get('password'), this.query.get('version'), apiVersion, function(resApiLogin, user) {
                     if (resApiLogin) {
@@ -228,7 +236,7 @@ class Server {
                         body += chunk;
                     });
                     s.req.on('end', function() {
-                        testLog("41", "[ CHUNK FINISHED ]");
+                        testLog("req.on('end')");
                         body = new Buffer(body,'utf-8');
                         var res: number = 0;
                         var parts = multipart.Parse(body, boundary);
@@ -243,7 +251,9 @@ class Server {
                         for(var i=0; i<parts.length; i++) {
                             var key = parts[i]['filename'];
                             var value = parts[i]['data'].toString('utf8');
-                            console.log(key + '=' + value);
+                            if (key!='password' && key!='meta.xml' && key!='marcxml.xml' && key!='mods.xml') {
+                                testLog(key + '=' + value);
+                            }
                             if (key=='isbn') key = 'ean13';
                             if (key=='part_isbn') key = 'part_ean13';
                             if (key=='meta.xml') {
@@ -264,26 +274,30 @@ class Server {
                             bibinfo[key] = value;
                         }
 
+                        if (bibinfo.hasOwnProperty('login')) delete bibinfo['login'];
+                        if (bibinfo.hasOwnProperty('password')) delete bibinfo['password'];
+
                         /*************************************
                          * Vyhladat a vytvorit BIBLIO zaznam
                          ************************************/
                         Bibinfo.searchAndCreate(s, bibinfo, function(biblio) {
                             // Vyhladaj BIBLIO zaznam, a v pripade ak neexistuje vytvor
                             var idBiblio;
-                            console.dir(biblio);
-                            console.log('^^^^^^^^^^^^^^^^^ BIBLIO ^^^^^^^^^^^^^^');
+                            testLog('Bibinfo.searchAndCreate(bibinfo)');
+                            testLog('bibinfo: ' + JSON.stringify(bibinfo));
                             if (!biblio) {
                                 var err = 'Bibinfo search and create failed';
-                                console.log(err);
+                                testLog('41', err);
                                 s.send404IfNotValue(res, err);
                                 return false;
                             } else {
                                 idBiblio = biblio._id;
+                                testLog('idBiblio: ' + idBiblio);
                             }
 
                             if (!idBiblio) {
                               var err = '[ ERR ] idBiblio undefined';
-                              console.log(err);
+                              testLog('41', err);
                               s.send404IfNotValue(idBiblio, err);
                               return false;
                             }
@@ -296,31 +310,38 @@ class Server {
                             Archive.searchOpenAndCreate(s, archive, function(archiveItems) {
                                 var idArchive;
                                 var uuid;
-                                console.dir(archiveItems);
-                                console.log('^^^^^^^^^^^^^^^^^ ARCHIVE ^^^^^^^^^^^^^^');
+                                testLog('Archive.searchOpenAndCreate(archive)');
+                                testLog('archive: ' + JSON.stringify(archive));
                                 if (!archiveItems) {
                                     var err = 'Archive search and create failed';
-                                    console.log(err);
+                                    testLog('41', err);
                                     s.send404IfNotValue(res, err);
                                     return false;
                                 }
                                 else {
                                     idArchive = archiveItems._id;
                                     uuid = archiveItems.uuid;
+                                    testLog('archive uuid: ' + uuid);
                                 }
 
                                 if (!idArchive) {
                                   var err = '[ ERR ] idArchive undefined';
-                                  console.log(err);
+                                  testLog('41', err);
                                   s.send404IfNotValue(idArchive, err);
                                   return false;
                                 }
 
                                 // vytvorime adresar archivu, pokud jeste neexistuje
                                 var archiveDir: string = storageFolder + '/' + uuid;
+                                testLog('checking archive dir existence: ' + archiveDir);
                                 if (!fs.existsSync(archiveDir)){
+                                    testLog('result: archive dir don\'t exist');
+                                    testLog('creating archive dir: ' + archiveDir);
                                     fs.mkdirSync(archiveDir);
+                                    testLog('creating data subdir: ' + archiveDir + '/data');
                                     fs.mkdirSync(archiveDir + '/data');
+                                } else {
+                                    testLog('result: archive dir exists');
                                 }
                                 archiveDir = archiveDir + '/data';
 
@@ -329,90 +350,118 @@ class Server {
                                  ************************************/
                                 media.archive = idArchive;
                                 Media.searchAndCreate(s, media, function(mediaItems) {
-                                    console.dir(mediaItems);
-                                    console.log('^^^^^^^^^^^^^^^^^ MEDIA ^^^^^^^^^^^^^^');
+                                    testLog('Media.searchAndCreate(media)');
+                                    testLog('media: ' + JSON.stringify(media));
                                     var idMedia;
                                     if (!mediaItems) {
                                         var err = 'Media search and create failed';
-                                        console.log(err);
+                                        testLog('41', err);
                                         s.send404IfNotValue(res, err);
                                         return false;
                                     }
                                     else {
                                         idMedia = mediaItems._id;
+                                        testLog('idMedia: ' + idMedia);
                                     }
 
                                     if (!idMedia) {
-                                      var err = '[ ERR ] idMedia undefined';
-                                      console.log(err);
-                                      s.send404IfNotValue(idMedia, err);
-                                      return false;
+                                        var err = '[ ERR ] idMedia undefined';
+                                        testLog('41', err);
+                                        s.send404IfNotValue(idMedia, err);
+                                        return false;
                                     }
                                     // vytvorime adresar popisnych metadat DMDSEC, pokud jeste neexistuje
                                     var dmdDir: string = archiveDir + '/dmdsec';
                                     if (!fs.existsSync(dmdDir)){
+                                        testLog('creating dir: ' + dmdDir);
                                         fs.mkdirSync(dmdDir);
+                                    } else {
+                                        testLog('dmd dir exists: ' + dmdDir);
                                     }
                                     // vytvorime adresar administracnich metadat AMDSEC, pokud jeste neexistuje
                                     var amdDir: string = archiveDir + '/amdsec';
                                     if (!fs.existsSync(amdDir)){
+                                        testLog('creating dir: ' + amdDir);
                                         fs.mkdirSync(amdDir);
+                                    } else {
+                                        testLog('amd dir exists: ' + amdDir);
                                     }
 
                                     var filename, filenameFull;
 
                                     // META.xml - for each media
+                                    testLog('meta xml length: ' + metaxml.length);
                                     if (metaxml.length) {
                                         filename = 'amd_mets_isoimg_' + idMedia + '.xml';
                                         filenameFull = amdDir + '/' + filename;
+                                        testLog('meta xml filename: ' + filenameFull);
                                         (function(filename, filenameFull) {
                                             // files data to be writen to DB
                                             var fileinfo: any = <Filesdata>{};
                                             fileinfo.fileName = filename;
                                             fileinfo.fileType = 'amdsec-media-meta';
                                             fileinfo.fileSize = metaxml.length;
+                                            testLog('fileinfo.checkSum create md5 hash generator started');
                                             fileinfo.checkSum = crypto.createHash('md5').update(metaxml, 'utf8').digest('hex');
+                                            testLog('fileinfo.checkSum create md5 hash generator finished: ' + fileinfo.checkSum);
                                             fileinfo.media = idMedia;
+                                            testLog('Files.searchAndCreate(fileinfo)');
+                                            testLog('fileinfo: ' + JSON.stringify(fileinfo));
                                             Files.searchAndCreate(s, fileinfo, function(fileDoc) {
                                                 // write file to storage
+                                                testLog('writing file: ' + filenameFull);
                                                 fs.writeFileSync(filenameFull, metaxml);
                                             });
                                         }(filename, filenameFull));
                                     }
 
-                                    // MARC.xml - for easinglech archive
+                                    // MARC.xml - for each archive
+                                    testLog('marc xml length: ' + marcxml.length);
                                     if (marcxml.length) {
                                         filename = 'dmd_marc_' + idArchive + '.xml';
                                         filenameFull = dmdDir + '/' + filename;
+                                        testLog('marc xml filename: ' + filenameFull);
                                         (function(filename, filenameFull) {
                                             // files data to be writen to DB
                                             var fileinfo: any = <Filesdata>{};
                                             fileinfo.fileName = filename;
                                             fileinfo.fileType = 'dmdsec-archive-marc';
                                             fileinfo.fileSize = marcxml.length;
+                                            testLog('fileinfo.checkSum create md5 hash generator started');
                                             fileinfo.checkSum = crypto.createHash('md5').update(marcxml, 'utf8').digest('hex');
+                                            testLog('fileinfo.checkSum create md5 hash generator finished: ' + fileinfo.checkSum);
                                             fileinfo.archive = idArchive;
+                                            testLog('Files.searchAndCreate(fileinfo)');
+                                            testLog('fileinfo: ' + JSON.stringify(fileinfo));
                                             Files.searchAndCreate(s, fileinfo, function(fileDoc) {
                                                 // write file to storage
+                                                testLog('writing file: ' + filenameFull);
                                                 fs.writeFileSync(filenameFull, marcxml);
                                             });
                                         }(filename, filenameFull));
                                     }
 
                                     // MODS.xml - for single archive
+                                    testLog('mods xml length: ' + mods.length);
                                     if (mods.length) {
                                         filename = 'dmd_mods_' + uuid + '.xml';
                                         filenameFull = dmdDir + '/' + filename;
+                                        testLog('mods xml filename: ' + filenameFull);
                                         (function(filename, filenameFull) {
                                             // files data to be writen to DB
                                             var fileinfo: any = <Filesdata>{};
                                             fileinfo.fileName = filename;
                                             fileinfo.fileType = 'dmdsec-archive-mods';
                                             fileinfo.fileSize = mods.length;
+                                            testLog('fileinfo.checkSum create md5 hash generator started');
                                             fileinfo.checkSum = crypto.createHash('md5').update(mods, 'utf8').digest('hex');
+                                            testLog('fileinfo.checkSum create md5 hash generator finished: ' + fileinfo.checkSum);
                                             fileinfo.archive = idArchive;
+                                            testLog('Files.searchAndCreate(fileinfo)');
+                                            testLog('fileinfo: ' + JSON.stringify(fileinfo));
                                             Files.searchAndCreate(s, fileinfo, function(fileDoc) {
                                                 // write file to storage
+                                                testLog('writing file: ' + filenameFull);
                                                 var modsFormatted = xmlFormatter(mods, {indentation: "\t", stripComments: true});
                                                 modsFormatted = modsFormatted.replace(new RegExp("\t<", 'g'), "\t<mods:");
                                                 modsFormatted = modsFormatted.replace(new RegExp("\t</", 'g'), "\t</mods:");
@@ -421,9 +470,10 @@ class Server {
                                         }(filename, filenameFull));
                                     }
 
-                                    console.log('[ API IMPORT FINISHED ] idBiblio: ' + idBiblio.toString());
-                                    console.log('[ API IMPORT FINISHED ] idArchive: ' + idArchive.toString());
-                                    console.log('[ API IMPORT FINISHED ] idMedia (result): ' + idMedia.toString());
+                                    testLog('[ API IMPORT FINISHED ]');
+                                    testLog('idBiblio: ' + idBiblio.toString());
+                                    testLog('idArchive: ' + idArchive.toString());
+                                    testLog('idMedia: ' + idMedia.toString());
                                     s.response.writeHead(200);
                                     s.response.end(idMedia.toString());
                                 });
@@ -441,10 +491,10 @@ class Server {
          * ISO FILE UPLOAD
          **/
         else if (this.requrl.indexOf(urlUpload) > 0) {
-            testLog("41", "[ RECEIVING CHUNK ]");
+            testLog("41", "[ file upload: RECEIVING CHUNK ]");
 
             if (this.req.method == 'POST') {
-                testLog("41", "POST");
+                testLog("req.method=POST");
 
                 var mediaId: string = this.req.headers['x-cdarcha-mediaid'];
                 var mediaChecksum: string = this.req.headers['x-cdarcha-checksum'];
@@ -453,6 +503,14 @@ class Server {
                 var mediaSize: number = parseInt(this.req.headers['x-cdarcha-mediasize']) || 0;
                 var mediaReadProblem: number = parseInt(this.req.headers['x-cdarcha-mediareadproblem']) || 0;
                 var forcedUpload: number = parseInt(this.req.headers['x-cdarcha-forcedupload']) || 0;
+                
+                testLog('mediaId: ' + mediaId);
+                testLog('mediaChecksum: ' + mediaChecksum);
+                testLog('fileType: ' + fileType);
+                testLog('quickId: ' + quickId);
+                testLog('mediaSize: ' + mediaSize.toString());
+                testLog('mediaReadProblem: ' + mediaReadProblem.toString());
+                testLog('forcedUpload: ' + forcedUpload.toString());
 
                 // mediaid a checksum je povinne
                 if (!mediaId || !mediaChecksum) {
@@ -464,19 +522,21 @@ class Server {
                 var hash = crypto.createHash('md5');
                 hash.setEncoding('hex');
 
-                var writeStream = fs.createWriteStream(tmpFolder + '/iso/' + mediaId + '.iso', {flags: 'w'});
+                const uploadFn = tmpFolder + '/iso/' + mediaId + '.iso';
+                testLog('save upload to file: ' + uploadFn);
+                var writeStream = fs.createWriteStream(uploadFn, {flags: 'w'});
                 this.req.pipe(writeStream, { end: false });
                 this.req.pipe(hash);
 
                 var closeFileTransfer = function() {
-                    testLog("41", "[ CHUNK FINISHED ]");
+                    testLog("41", "[ file upload: req.on('end') FILE TRANSFER FINISHED ]");
                     writeStream.end();
                     hash.end();
                     var checksum: string = hash.read();
-                    console.log('%%%%%%%');
-                    console.log(mediaChecksum);
-                    console.log(checksum);
-                    console.log('%%%%%%%');
+                    testLog('checksum calculated by client');
+                    testLog(mediaChecksum);
+                    testLog('checksum calculated by server');
+                    testLog(checksum);
 
                     var success: boolean = (mediaChecksum == checksum);
 
@@ -494,41 +554,62 @@ class Server {
                     if (success) {
                         s.db.collection(mediaCollection).findOne({ _id: new mongo.ObjectID(mediaId)}, function(err: any, mediaItem: any) {
                             if (err) {
-                                console.log(err);
+                                testLog('41', err);
                                 s.send404IfNotValue(null, err);
                                 return false;
                             }
 
+                            testLog('updating media (_id: ' + mediaId + ')');
+                            testLog(JSON.stringify(mediaFile));
                             var archiveId: any = mediaItem.archive;
                             s.db.collection(mediaCollection).updateOne({ _id: new mongo.ObjectID(mediaId) }, { $set: mediaFile });
 
+                            var dataArchiveUpdate: any = {
+                                'dtLastUpdate': new Date()
+                            };
+                            testLog('updating archive (_id: ' + archiveId + ')');
+                            testLog(JSON.stringify(dataArchiveUpdate));
+                            s.db.collection(archiveCollection).updateOne({ _id: new mongo.ObjectID(archiveId) }, { $set: dataArchiveUpdate });
+
                             s.db.collection(archiveCollection).findOne({ _id: new mongo.ObjectID(archiveId) }, function(err, archive) {
                                 if (err) {
-                                    console.log(err);
+                                    testLog('41', err);
                                     s.send404IfNotValue(null, err);
                                     return false;
                                 }
 
                                 // vytvorime adresar archivu, pokud jeste neexistuje
                                 var archiveDir: string = storageFolder + '/' + archive.uuid;
+                                testLog('testing directory existence: ' + archiveDir);
                                 if (!fs.existsSync(archiveDir)){
+                                    testLog('creating directory: ' + archiveDir);
                                     fs.mkdirSync(archiveDir);
+                                    testLog('creating directory: ' + archiveDir + '/data');
                                     fs.mkdirSync(archiveDir + '/data');
+                                } else {
+                                    testLog('directory exists');
                                 }
                                 archiveDir = archiveDir + '/data';
 
                                 // vytvorime adresar media, pokud jeste neexistuje
                                 var masterCopyDir: string = archiveDir + '/isoimage';
+                                testLog('testing directory existence: ' + masterCopyDir);
                                 if (!fs.existsSync(masterCopyDir)){
+                                    testLog('creating directory: ' + masterCopyDir);
                                     fs.mkdirSync(masterCopyDir);
+                                } else {
+                                    testLog('directory exists');
                                 }
 
                                 // uklidime docasny soubor
+                                testLog('copying file ' + tmpFolder + '/iso/' + mediaId + '.iso -> ' + masterCopyDir + '/' + mediaId + '.' + fileType);
                                 fs.copyFileSync(tmpFolder + '/iso/' + mediaId + '.iso', masterCopyDir + '/' + mediaId + '.' + fileType);
+                                testLog('removing file ' + tmpFolder + '/iso/' + mediaId + '.iso');
                                 fs.unlinkSync(tmpFolder + '/iso/' + mediaId + '.iso');
                             });
                         });
                     } else {
+                        testLog('41', 'ERR: CHECKSUM TEST FAILED');
                         // kontrolni soucet nesedi, upload se nepoved, uklidime docasny soubor
                         //fs.unlinkSync(tmpFolder + '/iso/' + mediaId + '.iso');
                     }
@@ -540,6 +621,7 @@ class Server {
                 this.req.on('error', closeFileTransfer);
                 this.req.on('end', closeFileTransfer);
             } else {
+                testLog("41", "ERR: req.method!=POST");
                 this.send404IfNotValue(false, 'POST method required');
             }
         }// ISO FILE UPLOAD
@@ -552,11 +634,12 @@ class Server {
             testLog("41", "[ API COVER UPLOAD ]");
 
             if (this.req.method == 'POST') {
+                testLog("req.method=POST");
                 const boundary: string = multipart.getBoundary(this.req.headers['content-type']);
                 const boundaryRe = new RegExp(boundary, 'g');
 
                 var body: any = '',
-                    writeStream = null; // for streamed file write
+                    writeStream: any = null; // for streamed file write
 
                 this.req.on('data', function(chunk) {
                     var chunkString: string = chunk.toString();
@@ -571,6 +654,7 @@ class Server {
                         };
                         if (!writeStream && fileName) {
                             // starting with incomming file stream
+                            testLog('opening file for writing: ' + tmpFolder + '/scan/' + boundary + '-' + fileName);
                             writeStream = fs.createWriteStream(tmpFolder + '/scan/' + boundary + '-' + fileName, {flags: 'a'});
                         }
                         // text form data - octet stream form data header
@@ -602,7 +686,7 @@ class Server {
                     var metaxml: string = '';
 
                     // media_id
-                    var id = null;
+                    var id: any = null;
                     for(var i=0; i<parts.length; i++) {
                         var key = parts[i]['filename'];
                         var value = parts[i]['data'].toString('utf8');
@@ -627,7 +711,7 @@ class Server {
                     (function(id, metaxml){
                         s.db.collection(mediaCollection).findOne({ _id: new mongo.ObjectID(id) }, function(err, mediaDoc) {
                             if (err) {
-                                console.dir(err);
+                                testLog('41', err);
                                 s.response.writeHead(404);
                                 s.response.end(JSON.stringify({ "status": "error", "msg": err }));
                                 return;
@@ -639,10 +723,11 @@ class Server {
                             } else {
                                 archiveId = id;
                             }
+                            testLog('archiveId=' + archiveId.toString());
 
                             s.db.collection(archiveCollection).findOne({ _id: new mongo.ObjectID(archiveId) }, function(err, archiveDoc) {
                                 if (err) {
-                                    console.dir(err);
+                                    testLog('41', err);
                                     s.response.writeHead(404);
                                     s.response.end(JSON.stringify({ "status": "error", "msg": err }));
                                     return;
@@ -659,10 +744,11 @@ class Server {
                                         const filenamePrefix9 = filename.substring(0,9);
                                         const filenameFull = tmpFolder + '/scan/' + boundary + '-' + filename;
                                         if (filenamePrefix9=='cover.tif' || filenamePrefix9=='toc_page_') {
+                                            testLog('processing file: ' + filenameFull);
                                             // open file to get md5 hash
                                             fs.readFile(filenameFull, function(err, fileData) {
                                                 if (err) {
-                                                    console.dir(err);
+                                                    testLog('41', err);
                                                     s.response.writeHead(404);
                                                     s.response.end(JSON.stringify({ "status": "error", "msg": err }));
                                                     return;
@@ -677,6 +763,7 @@ class Server {
                                                 fileinfo.fileType = (filenamePrefix9=='cover.tif' ? 'cover' : 'toc');
                                                 fileinfo.fileSize = fileSizeInBytes;
                                                 // get file checksum
+                                                testLog('calculating file checksum');
                                                 fileinfo.checkSum = crypto.createHash('md5').update(fileData, 'utf8').digest('hex');
                                                 // archive or media id
                                                 if (mediaDoc) {
@@ -684,35 +771,47 @@ class Server {
                                                 } else if (archiveDoc) {
                                                     fileinfo.archive = archiveDoc._id;
                                                 }
-                                                // write filedata to debug
+                                                // write filedata
+                                                testLog('Files.insertUnique(fileinfo)');
+                                                testLog('fileinfo: ' + JSON.stringify(fileinfo));
                                                 Files.insertUnique(s, fileinfo, function(result) {
+                                                    testLog('checking directory existence: ' + archiveDir);
                                                     if (!fs.existsSync(archiveDir)){
+                                                        testLog('creating directory: ' + archiveDir);
                                                         fs.mkdirSync(archiveDir);
+                                                        testLog('creating directory: ' + archiveDir + '/data');
                                                         fs.mkdirSync(archiveDir + '/data');
                                                     }
 
                                                     var masterCopyDir: string = archiveDir + '/data/mastercopyscan';
+                                                    testLog('checking directory existence: ' + masterCopyDir);
                                                     if (!fs.existsSync(masterCopyDir)){
+                                                        testLog('creating directory: ' + masterCopyDir);
                                                         fs.mkdirSync(masterCopyDir);
                                                     }
                                                     // cleanup uploaded file
-                                                    fs.copyFileSync(filenameFull, masterCopyDir + '/' + (mediaDoc ? mediaDoc._id : archiveDoc._id) + '-' + filename);
+                                                    const copyDest: string = masterCopyDir + '/' + (mediaDoc ? mediaDoc._id : archiveDoc._id) + '-' + filename;
+                                                    testLog('copying file: ' + filenameFull + ' > ' + copyDest);
+                                                    fs.copyFileSync(filenameFull, copyDest);
+                                                    testLog('delete file: ' + filenameFull);
                                                     fs.unlinkSync(filenameFull);
 
                                                     var amdDir: string = archiveDir + '/data/amdsec';
+                                                    testLog('checking directory existence: ' + amdDir);
                                                     if (!fs.existsSync(amdDir)){
+                                                        testLog('creating directory: ' + amdDir);
                                                         fs.mkdirSync(amdDir);
                                                     }
 
                                                     // META.xml - for each media
                                                     if (metaxml.length) {
                                                         if (mediaDoc) {
-                                                          console.log('mediaDoc');
-                                                          console.log(mediaDoc._id);
+                                                          testLog('mediaDoc');
+                                                          testLog(mediaDoc._id);
                                                         }
                                                         if (archiveDoc) {
-                                                          console.log('archiveDoc');
-                                                          console.log(archiveDoc._id);
+                                                          testLog('archiveDoc');
+                                                          testLog(archiveDoc._id);
                                                         }
                                                         var filenameDotParts: any = filename.split('.');
                                                         var filenameWoExtension: string = filenameDotParts[0];
@@ -731,8 +830,11 @@ class Server {
                                                             } else {
                                                                 fileinfo.archive = archiveDoc._id;
                                                             }
+                                                            testLog('Files.insertUnique(fileinfo)');
+                                                            testLog('fileinfo: ' + JSON.stringify(fileinfo));
                                                             Files.insertUnique(s, fileinfo, function() {
                                                                 // write file to storage
+                                                                testLog('writing file: ' + filenameFullMetaXml);
                                                                 fs.writeFileSync(filenameFullMetaXml, metaxml);
                                                             });
                                                         }(filenameFullMetaXml, result._id));
@@ -745,11 +847,12 @@ class Server {
                             });
                         });
                     })(id, metaxml);
-                    console.log('[ API COVER UPLOAD FINISHED ]');
+                    testLog('[ API COVER UPLOAD FINISHED ]');
                     s.response.writeHead(200);
                     s.response.end('ok');
                 });
             } else {
+                testLog("41", "ERR: req.method!=POST");
                 s.send404IfNotValue(false, 'POST method required');
             }
         }// COVER/TOC UPLOAD
@@ -795,6 +898,7 @@ class Server {
          **/
         else if (this.requrl.indexOf(apiGetMedia) > 0) {
             testLog("41", "[ API GET MEDIA ]");
+            testLog(this.query);
 
             if (!this.query.get('quickid')) {
                 s.response.writeHead(404);
@@ -825,35 +929,48 @@ class Server {
                         s.response.end(JSON.stringify({ "status": "archive not found" }));
                         return;
                     }
-                    s.db.collection(metaCollection).findOne({ _id: archive.biblio }, function (err, biblio) {
+                    s.db.collection(usersCollection).findOne({ _id: archive.creator }, function (err, creator) {
                         if (err) {
                             s.response.writeHead(404);
                             s.response.end(JSON.stringify({ "status": "error", "msg": err }));
                             return;
                         }
-                        if (!biblio) {
+                        if (!creator) {
                             s.response.writeHead(200, {"Content-Type": "application/json; charset=utf-8"});
-                            s.response.end(JSON.stringify({ "status": "biblio not found" }));
+                            s.response.end(JSON.stringify({ "status": "archive creator not found" }));
                             return;
                         }
-
-                        s.response.writeHead(200, {"Content-Type": "application/json; charset=utf-8"});
-                        let dtLastUpdate = null;
-                        if (media.dtLastUpdate) {
-                            if (typeof media.dtLastUpdate == 'string') {
-                                dtLastUpdate = new Date(media.dtLastUpdate);
-                            } else {
-                                dtLastUpdate = media.dtLastUpdate.getDate() + '.' + (media.dtLastUpdate.getMonth() + 1) + '.' + media.dtLastUpdate.getFullYear();
+                        s.db.collection(metaCollection).findOne({ _id: archive.biblio }, function (err, biblio) {
+                            if (err) {
+                                s.response.writeHead(404);
+                                s.response.end(JSON.stringify({ "status": "error", "msg": err }));
+                                return;
                             }
-                        }
-                        s.response.end(JSON.stringify({
-                            "dtUpdate": dtLastUpdate,
-                            "title": biblio.title,
-                            "authors": biblio.authors,
-                            "year": biblio.year,
-                            "size": media.mediaSize,
-                            "mediaReadProblem": media.mediaReadProblem
-                        }));
+                            if (!biblio) {
+                                s.response.writeHead(200, {"Content-Type": "application/json; charset=utf-8"});
+                                s.response.end(JSON.stringify({ "status": "biblio not found" }));
+                                return;
+                            }
+
+                            s.response.writeHead(200, {"Content-Type": "application/json; charset=utf-8"});
+                            let dtLastUpdate: any = null;
+                            if (media.dtLastUpdate) {
+                                if (typeof media.dtLastUpdate == 'string') {
+                                    dtLastUpdate = new Date(media.dtLastUpdate);
+                                } else {
+                                    dtLastUpdate = media.dtLastUpdate.getDate() + '.' + (media.dtLastUpdate.getMonth() + 1) + '.' + media.dtLastUpdate.getFullYear();
+                                }
+                            }
+                            s.response.end(JSON.stringify({
+                                "dtUpdate": dtLastUpdate,
+                                "title": biblio.title,
+                                "authors": biblio.authors,
+                                "year": biblio.year,
+                                "size": media.mediaSize,
+                                "mediaReadProblem": media.mediaReadProblem,
+                                "creatorSigla": creator.sigla
+                            }));
+                        });
                     });
                 });
             });
@@ -890,10 +1007,12 @@ class Server {
 
                         var bibinfo = <Bibdata>{};
 
+                        testLog(parts);
                         for(var i=0; i<parts.length; i++) {
                             var key = parts[i]['filename'];
                             if (key=='isbn') key = 'ean13';
-                            if (key=='ean13' || key=='ismn' || key=='oclc' || key=='nbn' || key=='uuid' || key=='title' || key=='authors' || key=='year' || key.slice(0,5)=='part_') {
+                            testLog(key.slice(0,5));
+                            if (key=='ean13' || key=='ismn' || key=='oclc' || key=='nbn' || key=='uuid' || key=='issn' || key=='title' || key=='authors' || key=='year' || key.slice(0,5)=='part_') {
                                 bibinfo[key] = parts[i]['data'].toString('utf8');
                             }
                         }
@@ -980,14 +1099,14 @@ class Server {
 
             s.db.collection(archiveCollection).findOne({ _id: new mongo.ObjectID(id) }, function(err, archiveDoc) {
                 if (err) {
-                    console.dir(err);
+                    testLog('31', err);
                     s.response.writeHead(404);
                     s.response.end(JSON.stringify({ "status": "error", "msg": err }));
                     return;
                 }
                 s.db.collection(mediaCollection).findOne({ _id: new mongo.ObjectID(id) }, function(err, mediaDoc) {
                     if (err) {
-                        console.dir(err);
+                        testLog('31', err);
                         s.response.writeHead(404);
                         s.response.end(JSON.stringify({ "status": "error", "msg": err }));
                         return;
@@ -1041,6 +1160,7 @@ class Server {
                         case 'isbn':
                         case 'ean': multi[queryKey] = this.query.get('isbn'); break;
                         case 'nbn': multi[queryKey] = this.query.get('nbn'); break;
+                        case 'issn': multi[queryKey] = this.query.get('issn'); break;
                         case 'ismn': multi[queryKey] = this.query.get('ismn'); break;
                         case 'oclc': multi[queryKey] = this.query.get('oclc'); break;
                         case 'uuid': multi[queryKey] = this.query.get('uuid'); break;
@@ -1078,7 +1198,7 @@ class Server {
                     else {
                         for (var queryKey in multi) {
 
-                            if (queryKey == 'isbn' || queryKey == 'ean') {
+                            if (queryKey == 'isbn' || queryKey == 'ean' || queryKey == 'issn') {
                                 var isbn: string = queryKey == 'isbn' ? multi.isbn : multi.ean;
                                 isbn = isbn.split(' ')[0];
                                 if (isbn.length) {
@@ -1132,6 +1252,7 @@ class Server {
                         item.dtLastUpdate = new Date(archive.dtLastUpdate).toISOString();
                         item.creatorSigla = creator.sigla;
                         if (biblio.ean13) item.ean13 = biblio.ean13;
+                        if (biblio.issn) item.issn = biblio.issn;
                         if (biblio.ismn) item.ismn = biblio.ismn;
                         if (biblio.nbn) item.nbn = biblio.nbn;
                         if (biblio.oclc) item.oclc = biblio.oclc;
@@ -1258,7 +1379,7 @@ class Server {
         }
 
         else {
-            console.log("wrong query");
+            testLog("wrong query");
             this.send404IfNotValue(false);
         }
 
@@ -1286,6 +1407,12 @@ module.exports = {
     server: server
 }
 
-function testLog(color, message) {
-    console.log('\x1b[' + color + 'm', message, '\x1b[0m'); //debug
+function testLog(par1: string, par2: string = '') {
+    const date = new Date();
+    const dateString = date.toISOString();        
+    if (par2 !== '') {
+        console.log('[', dateString, '] \x1b[' + par1 + 'm', par2, '\x1b[0m');
+    } else {
+        console.log('[', dateString, '] ', par1);
+    }
 }

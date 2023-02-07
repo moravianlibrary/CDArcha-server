@@ -21,15 +21,15 @@ export interface Filesdata {
 
 export class Files {
 
-		archive: string;
+    archive: string;
     media: string;
     parent: string;
     fileName: string;
-		fileType: string;
-		checkSum: string;
-		fileSize: number;
-		dtCreated: number;
-		dtLastUpdate: number;
+    fileType: string;
+    checkSum: string;
+    fileSize: number;
+    dtCreated: number;
+    dtLastUpdate: number;
 
     constructor(files: Filesdata) {
         this.archive = files.archive;

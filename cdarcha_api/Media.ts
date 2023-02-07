@@ -3,30 +3,30 @@
 let mediaCollection: string = "media";
 
 export interface Mediadata {
-	archive: string;
-	mediaNo: string;
-  fileType: string;
-	checkSum: string;
-  quickId: string;
-  mediaSize: number;
-  mediaReadProblem: number;
-  forcedUpload: number;
-	dtCreated: number;
-	dtLastUpdate: number;
+    archive: string;
+    mediaNo: string;
+    fileType: string;
+    checkSum: string;
+    quickId: string;
+    mediaSize: number;
+    mediaReadProblem: number;
+    forcedUpload: number;
+    dtCreated: number;
+    dtLastUpdate: number;
 }
 
 export class Media {
 
-		archive: string;
-		mediaNo: string;
-		fileType: string;
-		checkSum: string;
-		quickId: string;
-		mediaSize: number;
-		mediaReadProblem: number;
-		forcedUpload: number;
-		dtCreated: number;
-		dtLastUpdate: number;
+    archive: string;
+    mediaNo: string;
+    fileType: string;
+    checkSum: string;
+    quickId: string;
+    mediaSize: number;
+    mediaReadProblem: number;
+    forcedUpload: number;
+    dtCreated: number;
+    dtLastUpdate: number;
 
     constructor(media: Mediadata) {
         this.archive = media.archive;
@@ -64,7 +64,7 @@ export class Media {
         });
         if (!media.archive || !media.mediaNo) {
             console.log('Archive id and mediaNo are mandotory');
-			return;
+            return;
         }
 
         media.dtCreated = media.dtLastUpdate = Date.now();
