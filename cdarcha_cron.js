@@ -16,12 +16,16 @@ const abbyyDir = process.env.ABBY_DIR;
 const crypto = require('crypto');
 const execSync = require('child_process').execSync;
 const request = require('request');
+const httpd = require('request');
 const fs = require('fs');
 const md5 = require('md5-file');
 const getFolderSize = require('get-folder-size');
 const lockFile = require('lockfile');
+const querystring = require('querystring');
 
-const MongoClient = require('mongodb').MongoClient;
+
+const mongo = require('mongodb');
+const MongoClient = mongo.MongoClient;
 const client = new MongoClient(process.env.MONGODB_URI, { useUnifiedTopology: true });
 
 
@@ -30,10 +34,120 @@ function _log(db, archiveId, msg) {
   console.log(msg);
 }
 
+const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
+
 
 // pouze jeden beh scriptu
 lockFile.check('cdarcha_cron.lock', function (er, isLocked) {
 if (!isLocked) {
+
+function processOcr(imgFn) {
+  return new Promise((resolve, reject) => {
+    request({
+      headers: {
+        'accept': 'application/json',
+        'Content-Type': 'application/json',
+        'api-key': process.env.PERO_API_KEY
+      },
+      uri: 'https://pero-ocr.fit.vutbr.cz/api/post_processing_request',
+      method: 'POST',
+      body: '{"engine": 1, "images": {"img1": null }}'
+    }, function (err, res, body) {
+      if (err) reject(err);
+      if (res.statusCode != 200) {
+        reject('Invalid status code <' + res.statusCode + '>');
+      } else {
+
+        // upload file
+        const reqJson = JSON.parse(body);
+        if (reqJson.status == 'success') {
+          const request_id = reqJson.request_id;
+
+          request({
+            headers: {
+              'accept': 'application/json',
+              'Content-Type': 'application/json',
+              'api-key': process.env.PERO_API_KEY
+            },
+            uri: 'https://pero-ocr.fit.vutbr.cz/api/upload_image/' + request_id + '/img1',
+            method: 'POST',
+            formData: {
+              'file': fs.createReadStream(imgFn)
+            }
+          }, function (err, res, body) {
+            if (err) reject(err);
+            if (res.statusCode != 200) {
+              reject('Invalid status code <' + res.statusCode + '>');
+            } else {
+
+              // check status
+              const uploadJson = JSON.parse(body);
+              if (uploadJson.status == 'success') {
+                resolve(request_id);
+              }
+
+            }
+          })
+
+        } else {
+          reject('Failed to create processing request');
+        }
+      }
+    })
+  })
+}
+
+
+function processOcrStatus(request_id) {
+  return new Promise((resolve, reject) => {
+    request({
+      headers: {
+        'accept': 'application/json',
+        'Content-Type': 'application/json',
+        'api-key': process.env.PERO_API_KEY
+      },
+      uri: 'https://pero-ocr.fit.vutbr.cz/api/request_status/' + request_id,
+      method: 'GET'
+    }, function (err, res, body) {
+      if (err) reject(err);
+      if (res.statusCode != 200) {
+        reject('Invalid status code <' + res.statusCode + '>');
+      } else {
+        // check file processing status
+        const reqJson = JSON.parse(body);
+        if (reqJson.status == 'success') {
+          if (reqJson.request_status && reqJson.request_status.img1 && reqJson.request_status.img1.state=='PROCESSED') {
+            resolve(true);
+          } else {
+            resolve(false);
+          }
+        } else {
+          reject('Invalid API status code <' + reqJson.status + '>');
+        }
+      }
+    });
+  });
+}
+
+function download(uri, imgFn) {
+  return new Promise((resolve, reject) => {
+    request(
+      {
+        headers: {
+          'api-key': process.env.PERO_API_KEY
+        },
+        uri: uri,
+        method: 'GET'
+      }, function (err, res, body) {
+        if (err) reject('Error while downloading file from OCR server ' + uri);
+      }
+    ).pipe(fs.createWriteStream(imgFn)).on('close', function(){
+      console.log('[ download done ' + imgFn + ' ]');
+      resolve();
+    });
+  })
+}
+
 
 // proces muze spustit
 // pripojime DB a najdeme zaznamy ke zpracovani
@@ -46,10 +160,11 @@ client.connect().then((client, err) => {
     try {
 
       var processedArchives = 0;
-	  // produkcni
+      // produkcni
       const cursorArchives = db.collection(archiveCollection).find({ "status": 1, "dtCreated" : { $gte : 1611572545612 } });
-	  // testovaci - jeden zaznam
-      //const cursorArchives = db.collection(archiveCollection).find({ _id: mongo.ObjectId('5c17802233cf5476d55ea92b') });
+      // testovaci - jeden zaznam
+      //const cursorArchives = db.collection(archiveCollection).find({ _id: mongo.ObjectId('614019bc8bb0502ae8015dc9') });
+      //const cursorArchives = db.collection(archiveCollection).find({ 'uuid': '2e591d30-b914-11ed-993e-29dd9ddd3142' });
       while(await cursorArchives.hasNext()) {
         const archive = await cursorArchives.next();
 
@@ -139,8 +254,8 @@ client.connect().then((client, err) => {
   	</mets:structMap>
   </mets:mets>`;
 
-        // pripravit adresar pro usercopyscan
-        var ucsDir = archiveDataDir + 'usercopyscan';
+        // pripravit adresar pro usercopy
+        var ucsDir = archiveDataDir + 'usercopy';
         if (!fs.existsSync(ucsDir)) {
           // vytvorit pokud neexistuje
           fs.mkdirSync(ucsDir)
@@ -172,43 +287,43 @@ client.connect().then((client, err) => {
           if (fileType[1] != 'jp2') {
             // transformace na jp2
             tmpFileName = archiveId + '-cover.jp2';
-            newFileName = 'mcs_' + archiveUuid + '_' + coverSeq + '.jp2';
+            newFileName = 'mc_' + archiveUuid + '_' + coverSeq + '.jp2';
             _log(db, archiveId, '[ Transformace na JP2: ' + newFileName + ' ]');
-            execCode = execSync('bin/convertTIFtoJP2.pl ' + archiveDataDir+'mastercopyscan/'+cover.fileName + ' ' + archiveDataDir+'mastercopyscan/'+archiveId+'-cover.jp2');
-            fs.unlinkSync(archiveDataDir + 'mastercopyscan/' + cover.fileName);
+            execCode = execSync('bin/convertTIFtoJP2.pl ' + archiveDataDir+'mastercopy/'+cover.fileName + ' ' + archiveDataDir+'mastercopy/'+archiveId+'-cover.jp2');
+            fs.unlinkSync(archiveDataDir + 'mastercopy/' + cover.fileName);
           }
           else {
             // toto je docasny nazov suboru - na pozadovany nazev bude prejmenovan az po prejmenovani vsech medii na docasny nazev
             // kvuli tomu, ze se muze sekvencni cislo skrizit
             tmpFileName = archiveId + '-cover.jp2';
-            newFileName = 'mcs_' + archiveUuid + '_' + coverSeq + '.jp2';
-            if (fs.existsSync(archiveDataDir + 'mastercopyscan/' + cover.fileName)) {
-              fs.renameSync(archiveDataDir + 'mastercopyscan/' + cover.fileName, archiveDataDir + 'mastercopyscan/' + tmpFileName);
+            newFileName = 'mc_' + archiveUuid + '_' + coverSeq + '.jp2';
+            if (fs.existsSync(archiveDataDir + 'mastercopy/' + cover.fileName)) {
+              fs.renameSync(archiveDataDir + 'mastercopy/' + cover.fileName, archiveDataDir + 'mastercopy/' + tmpFileName);
             }
           }
 
-          renameList.push({ '_id': cover._id, 'curr': archiveDataDir + 'mastercopyscan/' + tmpFileName, 'new': archiveDataDir + 'mastercopyscan/' + newFileName });
+          renameList.push({ '_id': cover._id, 'curr': archiveDataDir + 'mastercopy/' + tmpFileName, 'new': archiveDataDir + 'mastercopy/' + newFileName });
           await db.collection(filesCollection).updateOne({ "_id": mongo.ObjectId(cover._id) }, { $set: { 'fileName': tmpFileName } });
 
           // doplnit cover do seznamu md5 a main_mets itemlistu
-          coverChecksum = md5.sync(archiveDataDir + 'mastercopyscan/' + tmpFileName);
-          md5File += coverChecksum + ' \\mastercopyscan\\' + newFileName + "\n";
-          manifestMd5File += coverChecksum + ' data/mastercopyscan/' + newFileName + "\n";
-          itemlist += '        <item>\\mastercopyscan\\' + newFileName + '</item>' + "\n";
+          coverChecksum = md5.sync(archiveDataDir + 'mastercopy/' + tmpFileName);
+          md5File += coverChecksum + ' \\mastercopy\\' + newFileName + "\n";
+          manifestMd5File += coverChecksum + ' data/mastercopy/' + newFileName + "\n";
+          itemlist += '        <item>\\mastercopy\\' + newFileName + '</item>' + "\n";
           itemcount++;
 
           //
           // COVER USER COPY 1:8
           //
-          usercopyFileName = 'ucs_' + archiveUuid + '_' + coverSeq;
+          usercopyFileName = 'uc_' + archiveUuid + '_' + coverSeq;
           _log(db, archiveId, '[ Transformace na JP2: ' + usercopyFileName + '.jp2 ]');
-          execCode = execSync('kdu_transcode -i ' + archiveDataDir+'mastercopyscan/'+tmpFileName + ' -o ' + archiveDataDir+'usercopyscan/'+usercopyFileName+'.j2c Corder=RPCL "Cprecincts={256,256},{256,256},{128,128}" ORGtparts=R -rate 3 Clayers=12 "Cmodes={BYPASS}"');
-          fs.renameSync(archiveDataDir+'usercopyscan/'+usercopyFileName+'.j2c', archiveDataDir+'usercopyscan/'+usercopyFileName+'.jp2');
+          execCode = execSync('kdu_transcode -i ' + archiveDataDir+'mastercopy/'+tmpFileName + ' -o ' + archiveDataDir+'usercopy/'+usercopyFileName+'.j2c Corder=RPCL "Cprecincts={256,256},{256,256},{128,128}" ORGtparts=R -rate 3 Clayers=12 "Cmodes={BYPASS}"');
+          fs.renameSync(archiveDataDir+'usercopy/'+usercopyFileName+'.j2c', archiveDataDir+'usercopy/'+usercopyFileName+'.jp2');
           // doplnit booklet usercopy 1:8 do seznamu md5 a main_mets itemlistu
-          coverChecksum = md5.sync(archiveDataDir + 'usercopyscan/' + usercopyFileName + '.jp2');
-          md5File += coverChecksum + ' \\usercopyscan\\' + usercopyFileName + '.jp2' + "\n";
-          manifestMd5File += coverChecksum + ' data/usercopyscan/' + usercopyFileName + '.jp2' + "\n";
-          itemlist += '        <item>\\usercopyscan\\' + usercopyFileName + '.jp2' + '</item>' + "\n";
+          coverChecksum = md5.sync(archiveDataDir + 'usercopy/' + usercopyFileName + '.jp2');
+          md5File += coverChecksum + ' \\usercopy\\' + usercopyFileName + '.jp2' + "\n";
+          manifestMd5File += coverChecksum + ' data/usercopy/' + usercopyFileName + '.jp2' + "\n";
+          itemlist += '        <item>\\usercopy\\' + usercopyFileName + '.jp2' + '</item>' + "\n";
           itemcount++;
 
           // metadata
@@ -250,71 +365,85 @@ client.connect().then((client, err) => {
           if (fileType[1] != 'jp2') {
             // transformace na jp2
             tmpFileName = booklet._id + '-booklet.jp2';
-            newFileName = 'mcs_' + archiveUuid + '_' + bookletSeq + '.jp2';
+            newFileName = 'mc_' + archiveUuid + '_' + bookletSeq + '.jp2';
             _log(db, archiveId, '[ Transformace na JP2: ' + newFileName + ' ]');
-            execCode = execSync('bin/convertTIFtoJP2.pl ' + archiveDataDir+'mastercopyscan/'+booklet.fileName + ' ' + archiveDataDir+'mastercopyscan/'+booklet._id+'-booklet.jp2');
-            fs.unlinkSync(archiveDataDir + 'mastercopyscan/' + booklet.fileName);
+            execCode = execSync('bin/convertTIFtoJP2.pl ' + archiveDataDir+'mastercopy/'+booklet.fileName + ' ' + archiveDataDir+'mastercopy/'+booklet._id+'-booklet.jp2');
+            fs.unlinkSync(archiveDataDir + 'mastercopy/' + booklet.fileName);
           }
           else {
             // toto je docasny nazov suboru - na pozadovany nazev bude prejmenovan az po prejmenovani vsech medii na docasny nazev
             // kvuli tomu, ze se muze sekvencni cislo skrizit
             tmpFileName = booklet._id + '-booklet.jp2';
-            newFileName = 'mcs_' + archiveUuid + '_' + bookletSeq + '.jp2';
-            if (fs.existsSync(archiveDataDir + 'mastercopyscan/' + booklet.fileName)) {
-              fs.renameSync(archiveDataDir + 'mastercopyscan/' + booklet.fileName, archiveDataDir + 'mastercopyscan/' + tmpFileName);
+            newFileName = 'mc_' + archiveUuid + '_' + bookletSeq + '.jp2';
+            if (fs.existsSync(archiveDataDir + 'mastercopy/' + booklet.fileName)) {
+              fs.renameSync(archiveDataDir + 'mastercopy/' + booklet.fileName, archiveDataDir + 'mastercopy/' + tmpFileName);
             }
           }
 
-          renameList.push({ '_id': booklet._id, 'curr': archiveDataDir + 'mastercopyscan/' + tmpFileName, 'new': archiveDataDir + 'mastercopyscan/' + newFileName });
+          renameList.push({ '_id': booklet._id, 'curr': archiveDataDir + 'mastercopy/' + tmpFileName, 'new': archiveDataDir + 'mastercopy/' + newFileName });
           await db.collection(filesCollection).updateOne({ "_id": mongo.ObjectId(booklet._id) }, { $set: { 'fileName': tmpFileName } });
 
           // doplnit booklet do seznamu md5 a main_mets itemlistu
-          coverChecksum = md5.sync(archiveDataDir + 'mastercopyscan/' + tmpFileName);
-          md5File += coverChecksum + ' \\mastercopyscan\\' + newFileName + "\n";
-          manifestMd5File += coverChecksum + ' data/mastercopyscan/' + newFileName + "\n";
-          itemlist += '        <item>\\mastercopyscan\\' + newFileName + '</item>' + "\n";
+          coverChecksum = md5.sync(archiveDataDir + 'mastercopy/' + tmpFileName);
+          md5File += coverChecksum + ' \\mastercopy\\' + newFileName + "\n";
+          manifestMd5File += coverChecksum + ' data/mastercopy/' + newFileName + "\n";
+          itemlist += '        <item>\\mastercopy\\' + newFileName + '</item>' + "\n";
           itemcount++;
 
           //
           // BOOKLET OCR
           //
-          ocrTextFileName = 'mcs_' + archiveUuid + '_' + bookletSeq + '.txt';
-          ocrAltoFileName = 'mcs_' + archiveUuid + '_' + bookletSeq + '.xml';
-          _log(db, archiveId, '[ OCR bookletu pomoci Abbyy Recognition Server: ' + archiveDataDir+'mastercopyscan/'+tmpFileName + ' ]');
-          var ocrTextFileFullPath = archiveDataDir + 'mastercopyscan/' + ocrTextFileName;
+          ocrTextFileName = 'mc_' + archiveUuid + '_' + bookletSeq + '.txt';
+          ocrAltoFileName = 'mc_' + archiveUuid + '_' + bookletSeq + '.xml';
+          _log(db, archiveId, '[ OCR bookletu pomoci Abbyy Recognition Server: ' + archiveDataDir+'mastercopy/'+tmpFileName + ' ]');
+          var ocrTextFileFullPath = archiveDataDir + 'mastercopy/' + ocrTextFileName;
           if (fs.existsSync(ocrTextFileFullPath)) {
             fs.unlinkSync(ocrTextFileFullPath);
           }
-          var ocrAltoFileFullPath = archiveDataDir + 'mastercopyscan/' + ocrAltoFileName;
+          var ocrAltoFileFullPath = archiveDataDir + 'mastercopy/' + ocrAltoFileName;
           if (fs.existsSync(ocrAltoFileFullPath)) {
             fs.unlinkSync(ocrAltoFileFullPath);
           }
-          execCode = execSync(abbyyDir + 'jre1.6.0_45/bin/java -jar ' + abbyyDir + 'ocr-abbyy.jar ' + archiveDataDir+'mastercopyscan/'+tmpFileName + ' ' + archiveDataDir+'mastercopyscan/'+ocrTextFileName + ' ' + archiveDataDir+'mastercopyscan/'+ocrAltoFileName);
+          //execCode = execSync(abbyyDir + 'jre1.6.0_45/bin/java -jar ' + abbyyDir + 'ocr-abbyy.jar ' + archiveDataDir+'mastercopy/'+tmpFileName + ' ' + archiveDataDir+'mastercopy/'+ocrTextFileName + ' ' + archiveDataDir+'mastercopy/'+ocrAltoFileName);
+          const request_id = await processOcr(archiveDataDir+'mastercopy/'+tmpFileName);
+          var ocr_status = false;
+          for (var status_i=0; status_i<=1200; status_i++) {
+            ocr_status = await processOcrStatus(request_id);
+            if (ocr_status) break;
+            await delay(3000);
+          }
+          if (ocr_status) {
+            // download ocr txt
+            await download('https://pero-ocr.fit.vutbr.cz/api/download_results/'+request_id+'/img1/txt', archiveDataDir+'mastercopy/'+ocrTextFileName);
+            // download ocr alto
+            await download('https://pero-ocr.fit.vutbr.cz/api/download_results/'+request_id+'/img1/alto', archiveDataDir+'mastercopy/'+ocrAltoFileName);
+          }
+
           // doplnit OCR TXT do seznamu md5 a main_mets itemlistu
-          ocrChecksum = md5.sync(archiveDataDir + 'mastercopyscan/' + ocrTextFileName);
-          md5File += ocrChecksum + ' \\mastercopyscan\\' + ocrTextFileName + "\n";
-          manifestMd5File += ocrChecksum + ' data/mastercopyscan/' + ocrTextFileName + "\n";
-          itemlist += '        <item>\\mastercopyscan\\' + ocrTextFileName + '</item>' + "\n";
+          ocrChecksum = md5.sync(archiveDataDir + 'mastercopy/' + ocrTextFileName);
+          md5File += ocrChecksum + ' \\mastercopy\\' + ocrTextFileName + "\n";
+          manifestMd5File += ocrChecksum + ' data/mastercopy/' + ocrTextFileName + "\n";
+          itemlist += '        <item>\\mastercopy\\' + ocrTextFileName + '</item>' + "\n";
           itemcount++;
           // doplnit OCR ALTO do seznamu md5 a main_mets itemlistu
-          ocrChecksum = md5.sync(archiveDataDir + 'mastercopyscan/' + ocrAltoFileName);
-          md5File += ocrChecksum + ' \\mastercopyscan\\' + ocrAltoFileName + "\n";
-          manifestMd5File += ocrChecksum + ' data/mastercopyscan/' + ocrAltoFileName + "\n";
-          itemlist += '        <item>\\mastercopyscan\\' + ocrAltoFileName + '</item>' + "\n";
+          ocrChecksum = md5.sync(archiveDataDir + 'mastercopy/' + ocrAltoFileName);
+          md5File += ocrChecksum + ' \\mastercopy\\' + ocrAltoFileName + "\n";
+          manifestMd5File += ocrChecksum + ' data/mastercopy/' + ocrAltoFileName + "\n";
+          itemlist += '        <item>\\mastercopy\\' + ocrAltoFileName + '</item>' + "\n";
           itemcount++;
 
           //
           // BOOKLET USER COPY 1:8
           //
-          usercopyFileName = 'ucs_' + archiveUuid + '_' + coverSeq;
+          usercopyFileName = 'uc_' + archiveUuid + '_' + coverSeq;
           _log(db, archiveId, '[ Transformace na JP2: ' + userCopyFileName + '.jp2 ]');
-          execCode = execSync('kdu_transcode -i ' + archiveDataDir+'mastercopyscan/'+tmpFileName + ' -o ' + archiveDataDir+'usercopyscan/'+usercopyFileName+'.j2c Corder=RPCL "Cprecincts={256,256},{256,256},{128,128}" ORGtparts=R -rate 3 Clayers=12 "Cmodes={BYPASS}"');
-          fs.renameSync(archiveDataDir+'usercopyscan/'+usercopyFileName+'.j2c', archiveDataDir+'usercopyscan/'+usercopyFileName+'.jp2');
+          execCode = execSync('kdu_transcode -i ' + archiveDataDir+'mastercopy/'+tmpFileName + ' -o ' + archiveDataDir+'usercopy/'+usercopyFileName+'.j2c Corder=RPCL "Cprecincts={256,256},{256,256},{128,128}" ORGtparts=R -rate 3 Clayers=12 "Cmodes={BYPASS}"');
+          fs.renameSync(archiveDataDir+'usercopy/'+usercopyFileName+'.j2c', archiveDataDir+'usercopy/'+usercopyFileName+'.jp2');
           // doplnit booklet usercopy 1:8 do seznamu md5 a main_mets itemlistu
-          coverChecksum = md5.sync(archiveDataDir + 'usercopyscan/' + usercopyFileName + '.jp2');
-          md5File += coverChecksum + ' \\usercopyscan\\' + usercopyFileName + '.jp2' + "\n";
-          manifestMd5File += coverChecksum + ' data/usercopyscan/' + usercopyFileName + '.jp2' + "\n";
-          itemlist += '        <item>\\usercopyscan\\' + usercopyFileName + '.jp2' + '</item>' + "\n";
+          coverChecksum = md5.sync(archiveDataDir + 'usercopy/' + usercopyFileName + '.jp2');
+          md5File += coverChecksum + ' \\usercopy\\' + usercopyFileName + '.jp2' + "\n";
+          manifestMd5File += coverChecksum + ' data/usercopy/' + usercopyFileName + '.jp2' + "\n";
+          itemlist += '        <item>\\usercopy\\' + usercopyFileName + '.jp2' + '</item>' + "\n";
           itemcount++;
 
           // metadata
@@ -444,22 +573,22 @@ client.connect().then((client, err) => {
             if (fileType[1] != 'jp2') {
               // transformace na jp2
               tmpFileName = cover._id + '-cover.jp2';
-              newFileName = 'mcs_' + archiveUuid + '_' + coverSeq + '.jp2';
+              newFileName = 'mc_' + archiveUuid + '_' + coverSeq + '.jp2';
               _log(db, archiveId, '[ Transformace na JP2: ' + newFileName + ' ]');
-              execCode = execSync('bin/convertTIFtoJP2.pl ' + archiveDataDir+'mastercopyscan/'+cover.fileName + ' ' + archiveDataDir+'mastercopyscan/'+cover._id+'-cover.jp2');
-              fs.unlinkSync(archiveDataDir + 'mastercopyscan/' + cover.fileName);
+              execCode = execSync('bin/convertTIFtoJP2.pl ' + archiveDataDir+'mastercopy/'+cover.fileName + ' ' + archiveDataDir+'mastercopy/'+cover._id+'-cover.jp2');
+              fs.unlinkSync(archiveDataDir + 'mastercopy/' + cover.fileName);
             }
             else {
               // toto je docasny nazov suboru - na pozadovany nazev bude prejmenovan az po prejmenovani vsech medii na docasny nazev
               // kvuli tomu, ze se muze sekvencni cislo skrizit
               tmpFileName = cover._id + '-cover.jp2';
-              newFileName = 'mcs_' + archiveUuid + '_' + coverSeq + '.jp2';
-              if (fs.existsSync(archiveDataDir + 'mastercopyscan/' + cover.fileName)) {
-                fs.renameSync(archiveDataDir + 'mastercopyscan/' + cover.fileName, archiveDataDir + 'mastercopyscan/' + tmpFileName);
+              newFileName = 'mc_' + archiveUuid + '_' + coverSeq + '.jp2';
+              if (fs.existsSync(archiveDataDir + 'mastercopy/' + cover.fileName)) {
+                fs.renameSync(archiveDataDir + 'mastercopy/' + cover.fileName, archiveDataDir + 'mastercopy/' + tmpFileName);
               }
             }
 
-            renameList.push({ '_id': cover._id, 'curr': archiveDataDir + 'mastercopyscan/' + tmpFileName, 'new': archiveDataDir + 'mastercopyscan/' + newFileName });
+            renameList.push({ '_id': cover._id, 'curr': archiveDataDir + 'mastercopy/' + tmpFileName, 'new': archiveDataDir + 'mastercopy/' + newFileName });
             await db.collection(filesCollection).updateOne({ "_id": mongo.ObjectId(cover._id) }, { $set: { 'fileName': tmpFileName } });
 
             // toto je prvni cover archivu = archiv nema reprezentativni cover
@@ -469,24 +598,24 @@ client.connect().then((client, err) => {
             }
 
             // doplnit cover do seznamu md5 a main_mets itemlistu
-            coverChecksum = md5.sync(archiveDataDir + 'mastercopyscan/' + tmpFileName);
-            md5File += coverChecksum + ' \\mastercopyscan\\' + newFileName + "\n";
-            manifestMd5File += coverChecksum + ' data/mastercopyscan/' + newFileName + "\n";
-            itemlist += '        <item>\\mastercopyscan\\' + newFileName + '</item>' + "\n";
+            coverChecksum = md5.sync(archiveDataDir + 'mastercopy/' + tmpFileName);
+            md5File += coverChecksum + ' \\mastercopy\\' + newFileName + "\n";
+            manifestMd5File += coverChecksum + ' data/mastercopy/' + newFileName + "\n";
+            itemlist += '        <item>\\mastercopy\\' + newFileName + '</item>' + "\n";
             itemcount++;
 
             //
             // COVER USER COPY 1:8
             //
-            usercopyFileName = 'ucs_' + archiveUuid + '_' + coverSeq;
+            usercopyFileName = 'uc_' + archiveUuid + '_' + coverSeq;
             _log(db, archiveId, '[ Transformace na JP2: ' + usercopyFileName + '.jp2 ]');
-            execCode = execSync('kdu_transcode -i ' + archiveDataDir+'mastercopyscan/'+tmpFileName + ' -o ' + archiveDataDir+'usercopyscan/'+usercopyFileName+'.j2c Corder=RPCL "Cprecincts={256,256},{256,256},{128,128}" ORGtparts=R -rate 3 Clayers=12 "Cmodes={BYPASS}"');
-            fs.renameSync(archiveDataDir+'usercopyscan/'+usercopyFileName+'.j2c', archiveDataDir+'usercopyscan/'+usercopyFileName+'.jp2');
+            execCode = execSync('kdu_transcode -i ' + archiveDataDir+'mastercopy/'+tmpFileName + ' -o ' + archiveDataDir+'usercopy/'+usercopyFileName+'.j2c Corder=RPCL "Cprecincts={256,256},{256,256},{128,128}" ORGtparts=R -rate 3 Clayers=12 "Cmodes={BYPASS}"');
+            fs.renameSync(archiveDataDir+'usercopy/'+usercopyFileName+'.j2c', archiveDataDir+'usercopy/'+usercopyFileName+'.jp2');
             // doplnit booklet usercopy 1:8 do seznamu md5 a main_mets itemlistu
-            coverChecksum = md5.sync(archiveDataDir + 'usercopyscan/' + usercopyFileName + '.jp2');
-            md5File += coverChecksum + ' \\usercopyscan\\' + usercopyFileName + '.jp2' + "\n";
-            manifestMd5File += coverChecksum + ' data/usercopyscan/' + usercopyFileName + '.jp2' + "\n";
-            itemlist += '        <item>\\usercopyscan\\' + usercopyFileName + '.jp2' + '</item>' + "\n";
+            coverChecksum = md5.sync(archiveDataDir + 'usercopy/' + usercopyFileName + '.jp2');
+            md5File += coverChecksum + ' \\usercopy\\' + usercopyFileName + '.jp2' + "\n";
+            manifestMd5File += coverChecksum + ' data/usercopy/' + usercopyFileName + '.jp2' + "\n";
+            itemlist += '        <item>\\usercopy\\' + usercopyFileName + '.jp2' + '</item>' + "\n";
             itemcount++;
 
             // metadata
@@ -532,71 +661,85 @@ client.connect().then((client, err) => {
             if (fileType[1] != 'jp2') {
               // transformace na jp2
               tmpFileName = booklet._id + '-booklet.jp2';
-              newFileName = 'mcs_' + archiveUuid + '_' + coverSeq + '.jp2';
+              newFileName = 'mc_' + archiveUuid + '_' + coverSeq + '.jp2';
               _log(db, archiveId, '[ Transformace na JP2: ' + newFileName + ' ]');
-              execCode = execSync('bin/convertTIFtoJP2.pl ' + archiveDataDir+'mastercopyscan/'+booklet.fileName + ' ' + archiveDataDir+'mastercopyscan/'+booklet._id+'-booklet.jp2');
-              fs.unlinkSync(archiveDataDir + 'mastercopyscan/' + booklet.fileName);
+              execCode = execSync('bin/convertTIFtoJP2.pl ' + archiveDataDir+'mastercopy/'+booklet.fileName + ' ' + archiveDataDir+'mastercopy/'+booklet._id+'-booklet.jp2');
+              fs.unlinkSync(archiveDataDir + 'mastercopy/' + booklet.fileName);
             }
             else {
               // toto je docasny nazov suboru - na pozadovany nazev bude prejmenovan az po prejmenovani vsech medii na docasny nazev
               // kvuli tomu, ze se muze sekvencni cislo skrizit
               tmpFileName = booklet._id + '-booklet.jp2';
-              newFileName = 'mcs_' + archiveUuid + '_' + coverSeq + '.jp2';
-              if (fs.existsSync(archiveDataDir + 'mastercopyscan/' + booklet.fileName)) {
-                fs.renameSync(archiveDataDir + 'mastercopyscan/' + booklet.fileName, archiveDataDir + 'mastercopyscan/' + tmpFileName);
+              newFileName = 'mc_' + archiveUuid + '_' + coverSeq + '.jp2';
+              if (fs.existsSync(archiveDataDir + 'mastercopy/' + booklet.fileName)) {
+                fs.renameSync(archiveDataDir + 'mastercopy/' + booklet.fileName, archiveDataDir + 'mastercopy/' + tmpFileName);
               }
             }
 
-            renameList.push({ '_id': booklet._id, 'curr': archiveDataDir + 'mastercopyscan/' + tmpFileName, 'new': archiveDataDir + 'mastercopyscan/' + newFileName });
+            renameList.push({ '_id': booklet._id, 'curr': archiveDataDir + 'mastercopy/' + tmpFileName, 'new': archiveDataDir + 'mastercopy/' + newFileName });
             await db.collection(filesCollection).updateOne({ "_id": mongo.ObjectId(booklet._id) }, { $set: { 'fileName': tmpFileName } });
 
             // doplnit booklet do seznamu md5 a main_mets itemlistu
-            coverChecksum = md5.sync(archiveDataDir + 'mastercopyscan/' + tmpFileName);
-            md5File += coverChecksum + ' \\mastercopyscan\\' + newFileName + "\n";
-            manifestMd5File += coverChecksum + ' data/mastercopyscan/' + newFileName + "\n";
-            itemlist += '        <item>\\mastercopyscan\\' + newFileName + '</item>' + "\n";
+            coverChecksum = md5.sync(archiveDataDir + 'mastercopy/' + tmpFileName);
+            md5File += coverChecksum + ' \\mastercopy\\' + newFileName + "\n";
+            manifestMd5File += coverChecksum + ' data/mastercopy/' + newFileName + "\n";
+            itemlist += '        <item>\\mastercopy\\' + newFileName + '</item>' + "\n";
             itemcount++;
 
             //
             // BOOKLET OCR
             //
-            ocrTextFileName = 'mcs_' + archiveUuid + '_' + coverSeq + '.txt';
-            ocrAltoFileName = 'mcs_' + archiveUuid + '_' + coverSeq + '.xml';
-            _log(db, archiveId, '[ OCR bookletu pomoci Abbyy Recognition Server: ' + archiveDataDir+'mastercopyscan/'+tmpFileName + ' ]');
-            var ocrTextFileFullPath = archiveDataDir + 'mastercopyscan/' + ocrTextFileName;
+            ocrTextFileName = 'mc_' + archiveUuid + '_' + coverSeq + '.txt';
+            ocrAltoFileName = 'mc_' + archiveUuid + '_' + coverSeq + '.xml';
+            _log(db, archiveId, '[ OCR bookletu: ' + archiveDataDir+'mastercopy/'+tmpFileName + ' ]');
+            var ocrTextFileFullPath = archiveDataDir + 'mastercopy/' + ocrTextFileName;
             if (fs.existsSync(ocrTextFileFullPath)) {
               fs.unlinkSync(ocrTextFileFullPath);
             }
-            var ocrAltoFileFullPath = archiveDataDir + 'mastercopyscan/' + ocrAltoFileName;
+            var ocrAltoFileFullPath = archiveDataDir + 'mastercopy/' + ocrAltoFileName;
             if (fs.existsSync(ocrAltoFileFullPath)) {
               fs.unlinkSync(ocrAltoFileFullPath);
             }
-            execCode = execSync(abbyyDir + 'jre1.6.0_45/bin/java -jar ' + abbyyDir + 'ocr-abbyy.jar ' + archiveDataDir+'mastercopyscan/'+tmpFileName + ' ' + archiveDataDir+'mastercopyscan/'+ocrTextFileName + ' ' + archiveDataDir+'mastercopyscan/'+ocrAltoFileName);
+            //execCode = execSync(abbyyDir + 'jre1.6.0_45/bin/java -jar ' + abbyyDir + 'ocr-abbyy.jar ' + archiveDataDir+'mastercopy/'+tmpFileName + ' ' + archiveDataDir+'mastercopy/'+ocrTextFileName + ' ' + archiveDataDir+'mastercopy/'+ocrAltoFileName);
+            const request_id = await processOcr(archiveDataDir+'mastercopy/'+tmpFileName);
+            var ocr_status = false;
+            for (var status_i=0; status_i<=1200; status_i++) {
+              ocr_status = await processOcrStatus(request_id);
+              if (ocr_status) break;
+              await delay(3000);
+            }
+            if (ocr_status) {
+              // download ocr txt
+              await download('https://pero-ocr.fit.vutbr.cz/api/download_results/'+request_id+'/img1/txt', archiveDataDir+'mastercopy/'+ocrTextFileName);
+              // download ocr alto
+              await download('https://pero-ocr.fit.vutbr.cz/api/download_results/'+request_id+'/img1/alto', archiveDataDir+'mastercopy/'+ocrAltoFileName);
+            }
+
             // doplnit OCR TXT do seznamu md5 a main_mets itemlistu
-            ocrChecksum = md5.sync(archiveDataDir + 'mastercopyscan/' + ocrTextFileName);
-            md5File += ocrChecksum + ' \\mastercopyscan\\' + ocrTextFileName + "\n";
-            manifestMd5File += ocrChecksum + ' data/mastercopyscan/' + ocrTextFileName + "\n";
-            itemlist += '        <item>\\mastercopyscan\\' + ocrTextFileName + '</item>' + "\n";
+            ocrChecksum = md5.sync(archiveDataDir + 'mastercopy/' + ocrTextFileName);
+            md5File += ocrChecksum + ' \\mastercopy\\' + ocrTextFileName + "\n";
+            manifestMd5File += ocrChecksum + ' data/mastercopy/' + ocrTextFileName + "\n";
+            itemlist += '        <item>\\mastercopy\\' + ocrTextFileName + '</item>' + "\n";
             itemcount++;
             // doplnit OCR ALTO do seznamu md5 a main_mets itemlistu
-            ocrChecksum = md5.sync(archiveDataDir + 'mastercopyscan/' + ocrAltoFileName);
-            md5File += ocrChecksum + ' \\mastercopyscan\\' + ocrAltoFileName + "\n";
-            manifestMd5File += ocrChecksum + ' data/mastercopyscan/' + ocrAltoFileName + "\n";
-            itemlist += '        <item>\\mastercopyscan\\' + ocrAltoFileName + '</item>' + "\n";
+            ocrChecksum = md5.sync(archiveDataDir + 'mastercopy/' + ocrAltoFileName);
+            md5File += ocrChecksum + ' \\mastercopy\\' + ocrAltoFileName + "\n";
+            manifestMd5File += ocrChecksum + ' data/mastercopy/' + ocrAltoFileName + "\n";
+            itemlist += '        <item>\\mastercopy\\' + ocrAltoFileName + '</item>' + "\n";
             itemcount++;
 
             //
             // BOOKLET USER COPY 1:8
             //
-            usercopyFileName = 'ucs_' + archiveUuid + '_' + coverSeq;
+            usercopyFileName = 'uc_' + archiveUuid + '_' + coverSeq;
             _log(db, archiveId, '[ Transformace na JP2: ' + usercopyFileName + '.jp2 ]');
-            execCode = execSync('kdu_transcode -i ' + archiveDataDir+'mastercopyscan/'+tmpFileName + ' -o ' + archiveDataDir+'usercopyscan/'+usercopyFileName+'.j2c Corder=RPCL "Cprecincts={256,256},{256,256},{128,128}" ORGtparts=R -rate 3 Clayers=12 "Cmodes={BYPASS}"');
-            fs.renameSync(archiveDataDir+'usercopyscan/'+usercopyFileName+'.j2c', archiveDataDir+'usercopyscan/'+usercopyFileName+'.jp2');
+            execCode = execSync('kdu_transcode -i ' + archiveDataDir+'mastercopy/'+tmpFileName + ' -o ' + archiveDataDir+'usercopy/'+usercopyFileName+'.j2c Corder=RPCL "Cprecincts={256,256},{256,256},{128,128}" ORGtparts=R -rate 3 Clayers=12 "Cmodes={BYPASS}"');
+            fs.renameSync(archiveDataDir+'usercopy/'+usercopyFileName+'.j2c', archiveDataDir+'usercopy/'+usercopyFileName+'.jp2');
             // doplnit booklet usercopy 1:8 do seznamu md5 a main_mets itemlistu
-            coverChecksum = md5.sync(archiveDataDir + 'usercopyscan/' + usercopyFileName + '.jp2');
-            md5File += coverChecksum + ' \\usercopyscan\\' + usercopyFileName + '.jp2' + "\n";
-            manifestMd5File += coverChecksum + ' data/usercopyscan/' + usercopyFileName + '.jp2' + "\n";
-            itemlist += '        <item>\\usercopyscan\\' + usercopyFileName + '.jp2' + '</item>' + "\n";
+            coverChecksum = md5.sync(archiveDataDir + 'usercopy/' + usercopyFileName + '.jp2');
+            md5File += coverChecksum + ' \\usercopy\\' + usercopyFileName + '.jp2' + "\n";
+            manifestMd5File += coverChecksum + ' data/usercopy/' + usercopyFileName + '.jp2' + "\n";
+            itemlist += '        <item>\\usercopy\\' + usercopyFileName + '.jp2' + '</item>' + "\n";
             itemcount++;
 
             // metadata
@@ -635,9 +778,9 @@ client.connect().then((client, err) => {
           execSync('./bin/droid-6.4/droid.sh -a ' + archiveDataDir+'isoimage -p ' + archiveDataDir+'droid.profile', { 'timeout': 1800000, 'killSignal': 'SIGKILL' });
           execSync('./bin/droid-6.4/droid.sh -p ' + archiveDataDir+'droid.profile -n "Comprehensive breakdown" -t xml -r ' + archiveDataDir+'droid_'+archiveUuid+'.xml', { 'timeout': 1800000, 'killSignal': 'SIGKILL' });
           // protoze DROID obsahuje bug; nekopiruje report tam kam chceme, musime si report najit a skopirovat sami
-          fs.readdirSync(process.env.DROID_TMP_DIR).forEach(file => {
-            fs.copyFileSync(process.env.DROID_TMP_DIR + file, archiveDataDir+'droid_'+archiveUuid+'.xml');
-            fs.unlinkSync(process.env.DROID_TMP_DIR + file);
+          fs.readdirSync(process.env.DROID_TMP_DIR + '/').forEach(file => {
+            fs.copyFileSync(process.env.DROID_TMP_DIR + '/' + file, archiveDataDir+'droid_'+archiveUuid+'.xml');
+            fs.unlinkSync(process.env.DROID_TMP_DIR + '/' + file);
           });
           fs.unlinkSync(archiveDataDir + 'droid.profile');
           var droidChecksum = md5.sync(archiveDataDir + 'droid_' + archiveUuid + '.xml');
@@ -648,6 +791,7 @@ client.connect().then((client, err) => {
           _log(db, archiveId, '[ Ukoncena analyza DROID vsech medii archivu: ' + archiveUuid + ' ]');
         }
         catch (err) {
+          console.log(err);
           if (err.code == 'ETIMEDOUT') {
             archiveFinalStatus = 5; // DROID timeoutoval
           } else {
@@ -712,21 +856,27 @@ client.connect().then((client, err) => {
         infoFile = infoFile.replace('###itemlist###', itemlist);
         infoFile = infoFile.replace('###md5sum###', md5Md5);
         infoFile = infoFile.replace('###itemtotal###', itemcount);
-        getFolderSize(archiveDir, (err, size) => {
-          if (err) { throw err; }
-          infoFile = infoFile.replace('###archivesize###', size);
-          const infoMd5 = crypto.createHash('md5').update(infoFile, 'utf8').digest('hex');
+        console.log('*1');
+        const size = getFolderSize(archiveDir);
+        console.log('*2');
+        infoFile = infoFile.replace('###archivesize###', size);
+        const infoMd5 = crypto.createHash('md5').update(infoFile, 'utf8').digest('hex');
 
-          manifestMd5File += metsMd5 + ' data/main_mets_' + archiveUuid + '.xml' + "\n";
-          manifestMd5File += md5Md5 + ' data/md5_' + archiveUuid + '.md5' + "\n";
-          manifestMd5File += infoMd5 + ' data/info_' + archiveUuid + '.xml' + "\n";
+        manifestMd5File += metsMd5 + ' data/main_mets_' + archiveUuid + '.xml' + "\n";
+        manifestMd5File += md5Md5 + ' data/md5_' + archiveUuid + '.md5' + "\n";
+        manifestMd5File += infoMd5 + ' data/info_' + archiveUuid + '.xml' + "\n";
 
-          fs.writeFileSync(archiveDataDir + 'main_mets_' + archiveUuid + '.xml', metsFile);
-          fs.writeFileSync(archiveDataDir + 'md5_' + archiveUuid + '.md5', md5File);
-          fs.writeFileSync(archiveDataDir + 'info_' + archiveUuid + '.xml', infoFile);
-          fs.writeFileSync(archiveDir + '/manifest-md5.txt', manifestMd5File);
-          fs.writeFileSync(archiveDir + '/bagit.txt', "BagIt-Version: 0.97\nTag-File-Character-Encoding: UTF-8");
-        });
+        console.log(archiveDataDir + 'main_mets_' + archiveUuid + '.xml');
+        fs.writeFileSync(archiveDataDir + 'main_mets_' + archiveUuid + '.xml', metsFile);
+        console.log(archiveDataDir + 'md5_' + archiveUuid + '.md5');
+        fs.writeFileSync(archiveDataDir + 'md5_' + archiveUuid + '.md5', md5File);
+        console.log(archiveDataDir + 'info_' + archiveUuid + '.xml');
+        fs.writeFileSync(archiveDataDir + 'info_' + archiveUuid + '.xml', infoFile);
+        console.log(archiveDir + '/manifest-md5.txt');
+        fs.writeFileSync(archiveDir + '/manifest-md5.txt', manifestMd5File);
+        console.log(archiveDir + '/bagit.txt');
+        fs.writeFileSync(archiveDir + '/bagit.txt', "BagIt-Version: 0.97\nTag-File-Character-Encoding: UTF-8");
+        console.log('*3');
 
         _log(db, archiveId, '[ UKONCENE ZPRACOVANI ARCHIVU: ' + archive.uuid + ' ]');
         processedArchives++;

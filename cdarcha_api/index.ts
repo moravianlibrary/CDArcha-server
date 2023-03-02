@@ -73,8 +73,8 @@ const statusHuman = {
 const subdirByPrefix = {
     'amd': 'amdsec/',
     'dmd': 'dmdsec/',
-    'mcs': 'mastercopyscan/',
-    'ucs': 'usercopyscan/'
+    'mc': 'mastercopy/',
+    'uc': 'usercopy/'
 }
 
 
@@ -783,7 +783,7 @@ class Server {
                                                         fs.mkdirSync(archiveDir + '/data');
                                                     }
 
-                                                    var masterCopyDir: string = archiveDir + '/data/mastercopyscan';
+                                                    var masterCopyDir: string = archiveDir + '/data/mastercopy';
                                                     testLog('checking directory existence: ' + masterCopyDir);
                                                     if (!fs.existsSync(masterCopyDir)){
                                                         testLog('creating directory: ' + masterCopyDir);
@@ -1291,15 +1291,15 @@ class Server {
                             if (fileArchive.fileType == 'cover') {
                                 item.coverMasterCopy = 'data/' + subdirByPrefix[fileArchive.fileName.substring(0,3)] + fileArchive.fileName;
                                 // usercopy reprezentativni obalka
-                                if (fs.existsSync(storageFolder + '/' + uuid + '/data/usercopyscan/' + fileArchive.fileName.replace('mcs_','ucs_')))
-                                    item.coverUserCopy = 'data/usercopyscan/' + fileArchive.fileName;
+                                if (fs.existsSync(storageFolder + '/' + uuid + '/data/usercopy/' + fileArchive.fileName.replace('mc_','uc_')))
+                                    item.coverUserCopy = 'data/usercopy/' + fileArchive.fileName;
                             }
                             // reprezentativni toc
                             else if (fileArchive.fileType == 'toc') {
                                 item.toc = 'data/' + subdirByPrefix[fileArchive.fileName.substring(0,3)] + fileArchive.fileName;
                                 // usercopy reprezentativni toc
-                                if (fs.existsSync(storageFolder + '/' + uuid + + '/data/usercopyscan/' + fileArchive.fileName.replace('mcs_','ucs_')))
-                                    item.tocUserCopy = 'data/usercopyscan/' + fileArchive.fileName;
+                                if (fs.existsSync(storageFolder + '/' + uuid + + '/data/usercopy/' + fileArchive.fileName.replace('mc_','uc_')))
+                                    item.tocUserCopy = 'data/usercopy/' + fileArchive.fileName;
                             }
                             // jiny typ souboru napr. mods
                             else {
@@ -1329,13 +1329,13 @@ class Server {
                                     // abbyy soubory
                                     if (fileMedia.fileName.substring(0,3) == 'mcs') {
                                         const fileExt: string = fileMedia.fileName.slice(-4);
-                                        if (fs.existsSync(storageFolder + '/' + uuid + '/data/mastercopyscan/' + fileMedia.fileName.replace(fileExt, '.txt'))) {
+                                        if (fs.existsSync(storageFolder + '/' + uuid + '/data/mastercopy/' + fileMedia.fileName.replace(fileExt, '.txt'))) {
                                             itemMediaFiles.push({
                                                 fileName: 'data/' + subdirByPrefix[fileMedia.fileName.substring(0,3)] + fileMedia.fileName.replace(fileExt, '.txt'),
                                                 fileType: fileMedia.fileType + '-ocr-txt',
                                             });
                                         }
-                                        if (fs.existsSync(storageFolder + '/' + uuid + '/data/mastercopyscan/' + fileMedia.fileName.replace(fileExt, '.xml'))) {
+                                        if (fs.existsSync(storageFolder + '/' + uuid + '/data/mastercopy/' + fileMedia.fileName.replace(fileExt, '.xml'))) {
                                             itemMediaFiles.push({
                                                 fileName: 'data/' + subdirByPrefix[fileMedia.fileName.substring(0,3)] + fileMedia.fileName.replace(fileExt, '.xml'),
                                                 fileType: fileMedia.fileType + '-ocr-alto',
