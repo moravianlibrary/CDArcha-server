@@ -26,6 +26,8 @@ cdarcha_api/Helpers.js
 cdarcha_api/Media.js
 cdarcha_api/index.js
 
+package-lock.json
+
 # Optional npm cache directory
 .npm
 
