@@ -19,6 +19,13 @@ logs
 results
 tmp
 
+cdarcha_api/Archive.js
+cdarcha_api/Bibinfo.js
+cdarcha_api/Files.js
+cdarcha_api/Helpers.js
+cdarcha_api/Media.js
+cdarcha_api/index.js
+
 # Optional npm cache directory
 .npm
 
