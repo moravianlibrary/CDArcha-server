@@ -1,8 +1,10 @@
-[{
-  "name"      : "cdarcha_server",
-  "script"    : "./app.js",
-  "instances" : "1",
-  "error_file" : "../log/cdarcha-server-err.log",
-  "out_file"   : "../log/cdarcha-server-out.log",
-  "pid_file"   : "../run/cdarcha-server.pid"
-}]
+[
+  {
+          "name"      : "cdarcha_server",
+          "script"    : "./app.js",
+          "instances" : "1",
+          "error_file" : "../log/cdarcha-server-err.log",
+          "out_file"   : "../log/cdarcha-server-out.log",
+          "pid_file"   : "../run/cdarcha-server.pid"
+  }
+]
