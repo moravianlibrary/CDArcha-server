@@ -856,9 +856,7 @@ client.connect().then((client, err) => {
         infoFile = infoFile.replace('###itemlist###', itemlist);
         infoFile = infoFile.replace('###md5sum###', md5Md5);
         infoFile = infoFile.replace('###itemtotal###', itemcount);
-        console.log('*1');
         const size = getFolderSize(archiveDir);
-        console.log('*2');
         infoFile = infoFile.replace('###archivesize###', size);
         const infoMd5 = crypto.createHash('md5').update(infoFile, 'utf8').digest('hex');
 
@@ -876,7 +874,6 @@ client.connect().then((client, err) => {
         fs.writeFileSync(archiveDir + '/manifest-md5.txt', manifestMd5File);
         console.log(archiveDir + '/bagit.txt');
         fs.writeFileSync(archiveDir + '/bagit.txt', "BagIt-Version: 0.97\nTag-File-Character-Encoding: UTF-8");
-        console.log('*3');
 
         _log(db, archiveId, '[ UKONCENE ZPRACOVANI ARCHIVU: ' + archive.uuid + ' ]');
         processedArchives++;
